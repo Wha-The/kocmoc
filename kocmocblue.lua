@@ -20,6 +20,28 @@ if not isfile("kocmoc/planter_degradation.planters") then
 end
 if not isfolder("kocmoc/cache") then makefolder("kocmoc/cache") end
 
+local HttpService = game:GetService("HttpService")
+if not isfolder("kocmoc/routes") then
+    makefolder("kocmoc/routes")
+    -- download routes
+    local routes = game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/beeswarm.routes")
+    routes = game:GetService("HttpService"):JSONDecode(routes)
+    local unpack_directory
+    unpack_directory = function(root, d)
+        for name, data in pairs(d) do
+            if typeof(data) == "table" then
+                if not isfolder(root..name) then
+                    makefolder(root..name)
+                end
+                unpack_directory(root, data)
+            else
+                writefile(root..name, data)
+            end
+        end
+    end
+    unpack_directory("kocmoc/", routes)
+end
+
 -- API CALLS
 
 local function wrapcache(modulename, moduledownload)
@@ -30,10 +52,10 @@ local function wrapcache(modulename, moduledownload)
     return loadstring(readfile("kocmoc/cache/"..modulename))()
 end
 
-local library = wrapcache("bracketv4.lua", "https://raw.githubusercontent.com/Wha-The/Scripts/main/bracketv4.lua")
+local library = wrapcache("bracketv4.lua", "https://raw.githubusercontent.com/Wha-The/kocmoc/main/modules/bracketv4.lua")
 local api = wrapcache("api.lua", "https://raw.githubusercontent.com/Boxking776/kocmoc/main/api.lua")
-local pathfind, playbackRoute = wrapcache("pathfind.lua", "https://raw.githubusercontent.com/Wha-The/Scripts/main/pathfind.lua")
-local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists = wrapcache("proxyfileinterface.lua", "https://raw.githubusercontent.com/Wha-The/Scripts/main/proxyfileinterface.lua")
+local pathfind, playbackRoute = wrapcache("pathfind.lua", "https://raw.githubusercontent.com/Wha-The/kocmoc/main/modules/pathfind.lua")
+local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists = wrapcache("proxyfileinterface.lua", "https://raw.githubusercontent.com/Wha-The/kocmoc/main/modules/proxyfileinterface.lua")
 
 -- globals
 local playerstatsevent = game:GetService("ReplicatedStorage").Events.RetrievePlayerStats
@@ -44,7 +66,6 @@ local function equip_mask(mask) return game:GetService("ReplicatedStorage").Even
 local function round_decimal(n, place)
     return string.format("%."..place.."f", n)
 end
-local HttpService = game:GetService("HttpService")
 
 -- Sewage pipes :)
 -- Reason we're using a proxy to read/write is because synapse crashes if you call readfile/writefile too much
@@ -122,6 +143,9 @@ end
 local function playRoute(start, dest)
     local fname = "kocmoc/routes/"..start.."/"..dest..".route"
     if not proxyfileexists(fname) then
+        if start == "hive" or dest == "hive" then
+            return warn("Can't find path! "..fname)
+        end
         playRoute(start, "hive")
         playRoute("hive", dest)
         return
@@ -376,7 +400,7 @@ local function farm(token)
     if token:GetAttribute("_token_collected") then return end
     if kocmoc.toggles.loopfarmspeed then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = kocmoc.vars.farmspeed end
     api.humanoid():MoveTo(token.Position) 
-    repeat task.wait() until (token.Position-api.humanoidrootpart().Position).magnitude <= 4 or not IsToken(token) or not temptable.running
+    repeat task.wait() until (token.Position-api.humanoidrootpart().Position).magnitude <= 3 or not IsToken(token) or not temptable.running
     token:SetAttribute("_token_collected", true)
 end
 
@@ -528,7 +552,7 @@ local BuffTile = require(game:GetService("ReplicatedStorage").Gui.TileDisplay.Bu
 local function get_buff_combo(buff)
     return select(2, BuffTile.GetBuffInfo(buff))
 end
-local function get_buff_duration_remaining(buff)
+local function get_buff_active_duration(buff)
     return workspace.OsTime.Value - select(1, BuffTile.GetBuffInfo(buff))
 end
 local PercentageTilesByTag = getupvalues(require(game:GetService("ReplicatedStorage").Gui.TileDisplay.BuffTile).RegisterListeners)[1].TilesByTag
@@ -831,7 +855,7 @@ local function place_new_planters()
     end
 
     -- Load Planter Degration File
-    local LastCollectTimes = HttpService:JSONDecode(readfile("kocmoc/planter_degradation.planters"))
+    local LastCollectTimes = HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters"))
 
     -- go plant
     local planted = 0
@@ -938,7 +962,7 @@ local function collectplanters(force_harvest)
             task.wait(1)
             game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(v.ActorID)
             
-            local LastCollectTimes = HttpService:JSONDecode(readfile("kocmoc/planter_degradation.planters"))
+            local LastCollectTimes = HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters"))
             local existing_degradation = 0
             if LastCollectTimes[field] then
                 existing_degradation = (LastCollectTimes[field][1] + LastCollectTimes[field][2]) - workspace.OsTime.Value
@@ -947,7 +971,7 @@ local function collectplanters(force_harvest)
                 end
             end
             LastCollectTimes[field] = {workspace.OsTime.Value, existing_degradation + math.round(v.GrowthPercent * GetPlanterData(v.Type).MaxGrowth) + (60 * 60)}
-            writefile("kocmoc/planter_degradation.planters", HttpService:JSONEncode(LastCollectTimes))
+            proxyfilewrite("kocmoc/planter_degradation.planters", HttpService:JSONEncode(LastCollectTimes))
             Pipes.toAHK({
                 Type = "increment_stat",
                 Stat = "Total Planters",
@@ -1177,6 +1201,29 @@ local function makequests()
     end end end end end
 end
 
+local function convert_all()
+    local stats = statsget()
+    if stats.Eggs["Micro-Converter"] > 12 then
+        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({
+            ["Name"] = "Micro-Converter"
+        })
+        return
+    end
+    local availability = {stats.ToyTimes["Instant Converter"] + 15 * 60 - workspace.OsTime.Value, stats.ToyTimes["Instant Converter B"] + 15 * 60 - workspace.OsTime.Value, stats.ToyTimes["Instant Converter C"] + 15 * 60 - workspace.OsTime.Value}
+    for i = 1, 3 do
+        if availability[i] <= 0 then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Instant Converter"..(({"", " B", " C"})[i]))
+            return
+        end
+    end
+    if stats.Eggs["Micro-Converter"] > 0 then
+        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({
+            ["Name"] = "Micro-Converter"
+        })
+        return
+    end
+end
+
 local Config = { WindowName = "🌘  kocmoc | "..temptable.version, Color = Color3.fromRGB(164, 84, 255), Keybind = Enum.KeyCode.Semicolon}
 local Window = library:CreateWindow(Config, game:GetService("CoreGui"))
 
@@ -1219,6 +1266,8 @@ local misccv = hometab:CreateSection("Instant Converters")
 local misccva = misccv:CreateButton("Instant Converter A", function() game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Instant Converter") end)
 local misccvb = misccv:CreateButton("Instant Converter B", function() game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Instant Converter B") end)
 local misccvc = misccv:CreateButton("Instant Converter C", function() game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Instant Converter C") end)
+local misccvauto = misccv:CreateButton("Instant Convert", convert_all)
+game:GetService("UserInputService").InputBegan:Connect(function(input, gp)if not gp and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.T then convert_all() end end)
 
 local farmo = farmtab:CreateSection("Farming")
 local fielddropdown = farmo:CreateDropdown("Field", fieldstable, function(String) kocmoc.vars.field = String end) fielddropdown:SetOption(fieldstable[1])
@@ -1432,6 +1481,20 @@ task.spawn(function() while task.wait() do
             local pollencount = game.Players.LocalPlayer.CoreStats.Pollen.Value
             
             local pollenpercentage = pollencount/maxpollen*100
+            if get_buff_combo(kocmoc.vars.field.." Boost") then
+                if pollenpercentage >= 100 then
+                    convert_all()
+                    task.wait(6)
+                    pollenpercentage = game.Players.LocalPlayer.CoreStats.Pollen.Value/maxpollen*100
+                end
+
+                if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                    local stats = statsget()
+                    if ((workspace.OsTime.Value - stats.PlayerActiveTimes["Jelly Beans"]) > 2*60) and (stats.Eggs.JellyBeans > 85) then
+                        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Jelly Beans"})
+                    end
+                end
+            end
             local s, b = pcall(function()return gethiveballoon().BalloonBody.GuiAttach.Gui.Bar.TextLabel.Text end)
             if s then
                 s, b = pcall(function() local a = string.gsub(b, ",", ""); return tonumber(a) end)
@@ -1493,9 +1556,7 @@ task.spawn(function() while task.wait() do
             fieldposition = fieldselected.Position
             if temptable.sprouts.detected and temptable.sprouts.coords and kocmoc.toggles.farmsprouts then
                 if tonumber(pollenpercentage) >= 99 then
-                    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({
-                        ["Name"] = "Micro Converter"
-                    })
+                    convert_all()
                 end
                 fieldposition = temptable.sprouts.coords.Position
                 fieldpos = temptable.sprouts.coords
@@ -1531,7 +1592,7 @@ task.spawn(function() while task.wait() do
 
             if get_buff_combo(kocmoc.vars.field.." Boost") then
                 -- attempt to glitter field if timer < 1 min
-                if get_buff_duration_remaining(kocmoc.vars.field.." Boost") < 60 and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                if get_buff_active_duration(kocmoc.vars.field.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
                     local stats = statsget()
                     if ((workspace.OsTime.Value - stats["PlayerActiveTimes"]["Glitter"]) > 15.5*60) and (stats.Eggs.Glitter > 0) then
                         game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glitter"})
@@ -1634,15 +1695,25 @@ end end)
 
 task.spawn(function()
     while task.wait(1) do
-		if kocmoc.toggles.killvicious and temptable.detected.vicious and temptable.converting == false and not temptable.started.monsters then
+		if kocmoc.toggles.killvicious and temptable.detected.vicious and not temptable.converting and not temptable.started.monsters then
             temptable.started.vicious = true
+            local autoFarmStatus = kocmoc.toggles.autofarm
             disableall()
+            
 			local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
 			for i, v in pairs(workspace.Particles:GetChildren()) do
 				for x in string.gmatch(v.Name, "Vicious") do
 					if string.find(v.Name, "Vicious") then
+                        if kocmoc.toggles.legit and autoFarmStatus then
+                            local playerPos = game.Players.LocalPlayer.Character.PrimaryPart.Position
+                            if find_field(playerPos) == kocmoc.vars.field then
+                                playRoute(kocmoc.vars.field, find_field(v.Position))
+                            end
+                        end
+
 						api.tween(1,CFrame.new(v.Position.x, v.Position.y, v.Position.z)) task.wait(1)
 						api.tween(0.5, CFrame.new(v.Position.x, v.Position.y, v.Position.z)) task.wait(.5)
+                        break
 					end
 				end
 			end
@@ -1653,14 +1724,13 @@ task.spawn(function()
                         if string.find(v.Name, "Vicious") then
                             for i=1, 4 do
                                 temptable.float = true
-                                vichumanoid.CFrame = CFrame.new(v.Position.x+10, v.Position.y, v.Position.z)
+                                vichumanoid.CFrame = CFrame.new(v.Position.x, v.Position.y + 3, v.Position.z)
                                 task.wait(.3)
                             end
                         end
                     end
                 end
 			end
-            enableall()
 			task.wait(1)
 			Pipes.toAHK({
                 Type = "increment_stat",
@@ -1668,6 +1738,11 @@ task.spawn(function()
             })
 			temptable.float = false
             temptable.started.vicious = false
+            if kocmoc.toggles.legit and autoFarmStatus then
+                local playerPos = game.Players.LocalPlayer.Character.PrimaryPart.Position
+                playRoute(find_field(playerPos), kocmoc.vars.field)
+            end
+            enableall()
 		end
 	end
 end)
@@ -1861,7 +1936,7 @@ task.spawn(function() while task.wait(1) do
         if kocmoc.dispensesettings.coconut and canToyBeUsed("Coconut Dispenser") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Coconut Dispenser") end
         if kocmoc.dispensesettings.glue and canToyBeUsed("Glue Dispenser") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Glue Dispenser") end
     end
-    if canToyBeUsed("Blue Field Booster") then
+    if kocmoc.toggles.autofarm and canToyBeUsed("Blue Field Booster") then
         game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster")
     end
     if kocmoc.toggles.autoboosters and hasBoosterQuest() then 
@@ -1965,7 +2040,7 @@ game.Players.PlayerAdded:Connect(function(player)
         if not shared._chatbotstarted then
             shared._chatbotstarted = true
             while shared._chatbotstarted and #game.Players:GetPlayers() >= 4 do
-                task.wait(2)
+                task.wait(3)
                 game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("[4 OR MORE PLAYERS DETECTED. PLEASE USE THE OTHER AFK SERVER TO AVOID LAGGING THE GAME!]", "All")
             end
             shared._chatbotstarted = false
