@@ -140,20 +140,6 @@ local Pipes = {} do
     end
 end
 
-local function playRoute(start, dest)
-    local fname = "kocmoc/routes/"..start.."/"..dest..".route"
-    if not proxyfileexists(fname) then
-        if start == "hive" or dest == "hive" then
-            return warn("Can't find path! "..fname)
-        end
-        playRoute(start, "hive")
-        playRoute("hive", dest)
-        return
-    end
-    local data = HttpService:JSONDecode(proxyfileread(fname))
-    return playbackRoute(data)
-end
-
 -- Script tables
 
 local temptable = {
@@ -362,11 +348,12 @@ local kocmoc = {
 local defaultkocmoc = kocmoc
 
 -- functions
+local routeToField, find_field
 
 local function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
 
 local function getTimeSinceToyActivation(name)
-    return require(game.ReplicatedStorage.OsTime)() - require(game.ReplicatedStorage.ClientStatCache):Get("ToyTimes")[name]
+    return workspace.OsTime.Value - require(game.ReplicatedStorage.ClientStatCache):Get("ToyTimes")[name]
 end
 
 local function getTimeUntilToyAvailable(n)
@@ -664,7 +651,6 @@ local function killmobs()
     end
 
     while #mob_spawns > 0 do
-        task.wait()
         local index, d = (function()
             local closest, closestMag = nil, math.huge
             for index, d in pairs(mob_spawns) do
@@ -682,6 +668,14 @@ local function killmobs()
             table.remove(mob_spawns, index)
             continue
         end
+        if kocmoc.toggles.legit then
+            routeToField(find_field(monsterpart.Position))
+            if find_field((game.Players.LocalPlayer.Character.PrimaryPart.Position)) == find_field(monsterpart.Position) then
+                game.Players.LocalPlayer.Character.Humanoid:MoveTo(monsterpart.Position)
+                task.wait(3)
+            end
+        end
+        
         api.humanoidrootpart().CFrame = monsterpart.CFrame
         repeat api.humanoidrootpart().CFrame = monsterpart.CFrame; avoidmobs(); task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible
         task.wait(2)
@@ -761,13 +755,41 @@ local PlanterRecommendedFields = {
 local NectarPriority = {"Comforting Nectar", "Motivating Nectar", "Satisfying Nectar", "Refreshing Nectar"--[[, "Invigorating Nectar"]]}
 local GetPlanterData = require(game.ReplicatedStorage.PlanterTypes).Get
 
-local function find_field(position)
+function find_field(position, options)
+    options = options or {}
     local matches = {}
     for _, p in pairs(workspace.FlowerZones:GetChildren()) do
+        if options.exceptions and table.find(options.exceptions, p.Name) then continue end
         table.insert(matches, {(position - p.Position).Magnitude, p.Name})
+    end
+    if options.hive and (not options.exceptions or not table.find(options.exceptions, "hive")) then
+        -- consider the hive too
+        table.insert(matches, {(position - game.Players.LocalPlayer.SpawnPos.Value.Position).Magnitude, "hive"})
     end
     table.sort(matches, function(a, b) return a[1] < b[1] end)
     return matches[1][2]
+end
+
+local function playRoute(start, dest)
+    if start == dest then
+        return playRoute(find_field(workspace.FlowerZones[start].Position, {hive=true, exceptions={start, dest}}), start)
+    end
+    local fname = "kocmoc/routes/"..start.."/"..dest..".route"
+    if not proxyfileexists(fname) then
+        if start == "hive" or dest == "hive" then
+            return warn("Can't find path! "..fname)
+        end
+        playRoute(start, "hive")
+        playRoute("hive", dest)
+        return
+    end
+    local data = HttpService:JSONDecode(proxyfileread(fname))
+    return playbackRoute(data)
+end
+
+function routeToField(field)
+    local currentField = find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position, {hive=true})
+    playRoute(currentField, field)
 end
 
 function compile_planters()
@@ -922,7 +944,12 @@ local function place_new_planters()
             end
         end
         -- go to field and plant
-        api.tween(2, CFrame.new(workspace.FlowerZones[field].Position) + Vector3.new(0, 3, 0))
+        if kocmoc.toggles.legit then
+            routeToField(field)
+        end
+        if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) ~= field then 
+            api.tween(2, CFrame.new(workspace.FlowerZones[field].Position) + Vector3.new(0, 3, 0))
+        end
         task.wait(1)
         game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = pot})
         task.wait(1)
@@ -1443,10 +1470,6 @@ workspace.Particles.ChildAdded:Connect(function(v)
     end
 end)
 
-local legit_goToHive = function()
-    local field = find_field(game.Players.LocalPlayer.Character.HumanoidRootPart.Position)
-    playRoute(field, "hive")
-end
 
 local cccinterval = 5*60
 local ccccounter = tick() - cccinterval
@@ -1601,8 +1624,11 @@ task.spawn(function() while task.wait() do
             end
             if tonumber(kocmoc.vars.convertat) < 1 or tonumber(pollenpercentage) < tonumber(kocmoc.vars.convertat) then
                 if not temptable.farm_tokens then
-                    api.tween(2, fieldpos)
-                    task.wait(2)
+                    routeToField(find_field(fieldposition))
+                    if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
+                        api.tween(2, fieldpos)
+                        task.wait(2)
+                    end
                     temptable.farm_tokens = true
                     if kocmoc.toggles.autosprinkler then makesprinklers() end
                 else
@@ -1627,8 +1653,16 @@ task.spawn(function() while task.wait() do
                         end
                     end
                     if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
-                        api.tween(2, fieldpos)
-                        task.wait(.2)
+                        if kocmoc.toggles.legit then
+                            routeToField(find_field(fieldposition))
+                            if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
+                                api.tween(2, fieldpos)
+                            end
+                            task.wait(.2)
+                        else
+                            api.tween(2, fieldpos)
+                            task.wait(.2)
+                        end
                         if kocmoc.toggles.autosprinkler then makesprinklers() end
                     end
                     if kocmoc.toggles.avoidmobs then avoidmobs() end
@@ -1640,8 +1674,8 @@ task.spawn(function() while task.wait() do
             elseif tonumber(pollenpercentage) >= tonumber(kocmoc.vars.convertat) then
                 if tonumber(kocmoc.vars.convertat) <= 1 then return end
                 temptable.farm_tokens = false
-                if kocmoc.toggles.legit and (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < temptable.magnitude then
-                    legit_goToHive()
+                if kocmoc.toggles.legit then
+                    routeToField("hive")
                 else
                     api.tween(2, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
                 end
@@ -1705,14 +1739,20 @@ task.spawn(function()
 				for x in string.gmatch(v.Name, "Vicious") do
 					if string.find(v.Name, "Vicious") then
                         if kocmoc.toggles.legit and autoFarmStatus then
-                            local playerPos = game.Players.LocalPlayer.Character.PrimaryPart.Position
-                            if find_field(playerPos) == kocmoc.vars.field then
-                                playRoute(kocmoc.vars.field, find_field(v.Position))
+                            routeToField(find_field(v.Position))
+                        end
+                        if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
+                            api.tween(1, CFrame.new(v.Position)) task.wait(1)
+                            api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
+                        else
+                            game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                            task.wait(3)
+                            if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
+                                api.tween(1, CFrame.new(v.Position)) task.wait(1)
+                                api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
                             end
                         end
 
-						api.tween(1,CFrame.new(v.Position.x, v.Position.y, v.Position.z)) task.wait(1)
-						api.tween(0.5, CFrame.new(v.Position.x, v.Position.y, v.Position.z)) task.wait(.5)
                         break
 					end
 				end
@@ -1739,8 +1779,7 @@ task.spawn(function()
 			temptable.float = false
             temptable.started.vicious = false
             if kocmoc.toggles.legit and autoFarmStatus then
-                local playerPos = game.Players.LocalPlayer.Character.PrimaryPart.Position
-                playRoute(find_field(playerPos), kocmoc.vars.field)
+                routeToField(kocmoc.vars.field)
             end
             enableall()
 		end
