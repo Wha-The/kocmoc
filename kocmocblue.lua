@@ -772,7 +772,8 @@ end
 
 local function playRoute(start, dest)
     if start == dest then
-        return playRoute(find_field(workspace.FlowerZones[start].Position, {hive=true, exceptions={start, dest}}), start)
+        return
+        -- return playRoute(find_field(workspace.FlowerZones[start].Position, {hive=true, exceptions={start, dest}}), start)
     end
     local fname = "kocmoc/routes/"..start.."/"..dest..".route"
     if not proxyfileexists(fname) then
