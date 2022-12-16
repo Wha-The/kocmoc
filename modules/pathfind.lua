@@ -85,7 +85,7 @@ local function playbackRoute(waypoints)
 	    	local cannonPos = workspace.Toys[command.Data.Cannon].Platform.Position
 	    	local timeout = false
 		    task.spawn(function()
-		        task.wait(15)
+		        task.wait(10)
 		        timeout = true
 		    end)
 		    repeat
@@ -108,7 +108,6 @@ local function playbackRoute(waypoints)
                 -- task.wait(.2)
                 -- if (game.Players.LocalPlayer.Character.PrimaryPart.Position - start_position).Magnitude > 5 then
                     -- launched, glide to hive.
-
             end
         elseif command.Command == "Glider" then
         	-- activate parachute
@@ -123,7 +122,7 @@ local function playbackRoute(waypoints)
             -- keep rotating player to face hive
             local timeout = false
             task.spawn(function()
-                task.wait(20)
+                task.wait(10)
                 timeout = true
             end)
             repeat
@@ -136,7 +135,7 @@ local function playbackRoute(waypoints)
         elseif command.Command == "Walk" then
         	local timeout = false
 		    task.spawn(function()
-		        task.wait(15)
+		        task.wait(10)
 		        timeout = true
 		    end)
 		    local dest = parseVector3(command.Data.Point)
