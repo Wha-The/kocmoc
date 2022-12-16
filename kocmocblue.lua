@@ -486,7 +486,7 @@ local function get_default_priority_tokens()
     end)
     return _existingPriorityTokens
 end
-
+local fieldposition
 local function gettoken(v3)
     if not v3 then
         v3 = fieldposition
@@ -1475,7 +1475,7 @@ end)
 local cccinterval = 5*60
 local ccccounter = tick() - cccinterval
 local doBPChecks = function()
-    Pipes.toLog("Do Backpack Checks")
+    if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
     if kocmoc.toggles.autoquest then makequests() end
     if kocmoc.toggles.autoplanters then collectplanters() end
     if tonumber(kocmoc.vars.convertat) < 1 or kocmoc.toggles.autokillmobs then 
@@ -1486,10 +1486,12 @@ local doBPChecks = function()
             temptable.started.monsters = false
         elseif ccccounter > cccinterval then
             ccccounter -= cccinterval * math.floor(ccccounter / cccinterval)
+            temptable.started.monsters = true
+            temptable.act = 0
             killmobs()
+            temptable.started.monsters = false
         end
     end
-    Pipes.toLog("Backpack checks finished.")
 end
 local lastPuff
 local interval = 2*60
@@ -1546,72 +1548,92 @@ task.spawn(function() while task.wait() do
                 doBPChecks()
             end
 
-            fieldselected = workspace.FlowerZones[kocmoc.vars.field]
-            if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
-                for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
-                    if v.Name == "Description" then
-                        if not string.match(v.Parent.Parent.TitleBar.Text, "Brown Bear") and (string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom")) then
-                            pollentypes = {'White Pollen', "Red Pollen", "Blue Pollen", "Blue Flowers", "Red Flowers", "White Flowers"}
-                            text = v.Text
-                            if api.returnvalue(fieldstable, text) and not string.find(v.Text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
-                                d = api.returnvalue(fieldstable, text)
-                                fieldselected = workspace.FlowerZones[d]
-                                break
-                            elseif api.returnvalue(pollentypes, text) and not string.find(v.Text, 'Complete!') then
-                                d = api.returnvalue(pollentypes, text)
-                                if d == "Blue Flowers" or d == "Blue Pollen" then
-                                    fieldselected = workspace.FlowerZones[kocmoc.bestfields.blue]
+            local fieldselected = workspace.FlowerZones[kocmoc.vars.field]
+            local mask = "Diamond Mask"
+            local fieldpos = CFrame.new(fieldselected.Position.X, fieldselected.Position.Y+3, fieldselected.Position.Z)
+            fieldposition = fieldselected.Position
+            if not get_buff_combo(kocmoc.vars.field.." Boost") then
+                if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
+                    for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
+                        if v.Name == "Description" then
+                            if not string.match(v.Parent.Parent.TitleBar.Text, "Brown Bear") and (string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom")) then
+                                pollentypes = {'White Pollen', "Red Pollen", "Blue Pollen", "Blue Flowers", "Red Flowers", "White Flowers"}
+                                text = v.Text
+                                if api.returnvalue(fieldstable, text) and not string.find(v.Text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
+                                    d = api.returnvalue(fieldstable, text)
+                                    fieldselected = workspace.FlowerZones[d]
+                                    if table.find(temptable.redfields, d) then
+                                        mask = "Demon Mask"
+                                    elseif table.find(temptable.bluefields, d) then
+                                        mask = "Diamond Mask"
+                                    elseif table.find(temptable.whitefields, d) then
+                                        mask = "Gummy Mask"
+                                    end
                                     break
-                                elseif d == "White Flowers" or d == "White Pollen" then
-                                    fieldselected = workspace.FlowerZones[kocmoc.bestfields.white]
-                                    break
-                                elseif d == "Red Flowers" or d == "Red Pollen" then
-                                    fieldselected = workspace.FlowerZones[kocmoc.bestfields.red]
-                                    break
+                                elseif api.returnvalue(pollentypes, text) and not string.find(v.Text, 'Complete!') then
+                                    d = api.returnvalue(pollentypes, text)
+
+                                    if d == "Blue Flowers" or d == "Blue Pollen" then
+                                        fieldselected = workspace.FlowerZones[kocmoc.bestfields.blue]
+                                        break
+                                    elseif d == "White Flowers" or d == "White Pollen" then
+                                        fieldselected = workspace.FlowerZones[kocmoc.bestfields.white]
+                                        mask = "Gummy Mask"
+                                        break
+                                    elseif d == "Red Flowers" or d == "Red Pollen" then
+                                        fieldselected = workspace.FlowerZones[kocmoc.bestfields.red]
+                                        mask = "Demon Mask"
+                                        break
+                                    end
                                 end
                             end
                         end
                     end
-                end
-            else
-                fieldselected = workspace.FlowerZones[kocmoc.vars.field]
-            end
-            fieldpos = CFrame.new(fieldselected.Position.X, fieldselected.Position.Y+3, fieldselected.Position.Z)
-            fieldposition = fieldselected.Position
-            if temptable.sprouts.detected and temptable.sprouts.coords and kocmoc.toggles.farmsprouts then
-                if tonumber(pollenpercentage) >= 99 then
-                    convert_all()
-                end
-                fieldposition = temptable.sprouts.coords.Position
-                fieldpos = temptable.sprouts.coords
-            end
-            if kocmoc.toggles.farmpuffshrooms and workspace.Happenings.Puffshrooms:FindFirstChildOfClass("Model") then
-                temptable.magnitude = 40
-                if api.partwithnamepart("Mythic", workspace.Happenings.Puffshrooms) then
-                    fieldpos = api.partwithnamepart("Mythic", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                    fieldposition = fieldpos.Position
-                elseif api.partwithnamepart("Legendary", workspace.Happenings.Puffshrooms) then
-                    fieldpos = api.partwithnamepart("Legendary", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                    fieldposition = fieldpos.Position
-                elseif api.partwithnamepart("Epic", workspace.Happenings.Puffshrooms) then
-                    fieldpos = api.partwithnamepart("Epic", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                    fieldposition = fieldpos.Position
-                elseif api.partwithnamepart("Rare", workspace.Happenings.Puffshrooms) then
-                    fieldpos = api.partwithnamepart("Rare", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                    fieldposition = fieldpos.Position
                 else
-                    fieldpos = api.getbiggestmodel(workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                    fieldposition = fieldpos.Position
+                    fieldselected = workspace.FlowerZones[kocmoc.vars.field]
                 end
-                if lastPuff and lastPuff ~= fieldposition then
-                    task.wait(1.5)
-                    Pipes.toAHK({
-                        Type = "increment_stat",
-                        Stat = "Total Puffshrooms",
-                    })
-                    for i=1, 10 do gettoken(lastPuff) end
+                fieldpos = CFrame.new(fieldselected.Position.X, fieldselected.Position.Y+3, fieldselected.Position.Z)
+                fieldposition = fieldselected.Position
+                if temptable.sprouts.detected and temptable.sprouts.coords and kocmoc.toggles.farmsprouts then
+                    if tonumber(pollenpercentage) >= 99 then
+                        convert_all()
+                    end
+                    fieldposition = temptable.sprouts.coords.Position
+                    fieldpos = temptable.sprouts.coords
                 end
-                lastPuff = fieldposition
+                if kocmoc.toggles.farmpuffshrooms and workspace.Happenings.Puffshrooms:FindFirstChildOfClass("Model") then
+                    temptable.magnitude = 40
+                    if api.partwithnamepart("Mythic", workspace.Happenings.Puffshrooms) then
+                        fieldpos = api.partwithnamepart("Mythic", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                        fieldposition = fieldpos.Position
+                    elseif api.partwithnamepart("Legendary", workspace.Happenings.Puffshrooms) then
+                        fieldpos = api.partwithnamepart("Legendary", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                        fieldposition = fieldpos.Position
+                    elseif api.partwithnamepart("Epic", workspace.Happenings.Puffshrooms) then
+                        fieldpos = api.partwithnamepart("Epic", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                        fieldposition = fieldpos.Position
+                    elseif api.partwithnamepart("Rare", workspace.Happenings.Puffshrooms) then
+                        fieldpos = api.partwithnamepart("Rare", workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                        fieldposition = fieldpos.Position
+                    else
+                        fieldpos = api.getbiggestmodel(workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                        fieldposition = fieldpos.Position
+                    end
+                    if lastPuff and lastPuff ~= fieldposition then
+                        task.wait(1.5)
+                        Pipes.toAHK({
+                            Type = "increment_stat",
+                            Stat = "Total Puffshrooms",
+                        })
+                        for i=1, 10 do gettoken(lastPuff) end
+                    end
+                    lastPuff = fieldposition
+                end
+            end
+            if statsget()["SessionAccessories"]["Hat"] ~= mask then
+                print("Equip mask "..mask)
+                task.spawn(equip_mask, mask)
+                statsget()["SessionAccessories"]["Hat"] = mask
             end
 
             if get_buff_combo(kocmoc.vars.field.." Boost") then
@@ -1717,7 +1739,7 @@ task.spawn(function() while task.wait() do
                     end
                 end
                 if kocmoc.toggles.legit then
-                    playRoute("hive", kocmoc.vars.field)
+                    routeToField(kocmoc.vars.field)
                 end
                 Pipes.toAHK({
                     Type = "set_script_status",
