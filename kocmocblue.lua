@@ -24,7 +24,7 @@ local HttpService = game:GetService("HttpService")
 if not isfolder("kocmoc/routes") then
     makefolder("kocmoc/routes")
     -- download routes
-    local routes = game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/beeswarm.routes")
+    local routes = game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/routes.json")
     routes = game:GetService("HttpService"):JSONDecode(routes)
     local unpack_directory
     unpack_directory = function(root, d)
@@ -133,10 +133,27 @@ local Pipes = {} do
             callback(command)
         end
     end
-    function Pipes.toLog(line)
+    function Pipes.toLog(line, color)
         if not proxyfileexists("kocmoc/debug.log") then proxyfilewrite("kocmoc/debug.log", "") end
         line = "["..os.date("%H:%M:%S").."] "..line
         proxyfileappend("kocmoc/debug.log", line.."\n")
+
+        local color = ({
+            red = 15085139,
+            lightgreen = 8871681,
+            green = 9755247,
+            yellow = 8871681,
+        })[color]
+        -- task.spawn(syn.request, {
+        --     Url = "",
+        --     Method = "POST",
+        --     Body = HttpService:JSONEncode({
+        --         embeds = {{
+        --             description = line,
+        --             color = color,
+        --         }},
+        --     }),
+        -- })
     end
 end
 
@@ -535,14 +552,14 @@ local function balloonBlessingTimerLow()
     return true
 end
 
-local BuffTile = require(game:GetService("ReplicatedStorage").Gui.TileDisplay.BuffTile)
+local BuffTile = require(game:GetService("ReplicatedStorage"):WaitForChild("Gui"):WaitForChild("TileDisplay"):WaitForChild("BuffTile"))
 local function get_buff_combo(buff)
     return select(2, BuffTile.GetBuffInfo(buff))
 end
 local function get_buff_active_duration(buff)
     return workspace.OsTime.Value - select(1, BuffTile.GetBuffInfo(buff))
 end
-local PercentageTilesByTag = getupvalues(require(game:GetService("ReplicatedStorage").Gui.TileDisplay.BuffTile).RegisterListeners)[1].TilesByTag
+local PercentageTilesByTag = getupvalues(require(game:GetService("ReplicatedStorage"):WaitForChild("Gui"):WaitForChild("TileDisplay"):WaitForChild("BuffTile")).RegisterListeners)[1].TilesByTag
 local function get_buff_percentage(buff)
     local nectar = PercentageTilesByTag[buff]
     if not nectar then return 0 end
@@ -624,6 +641,16 @@ local function avoidmobs()
     end
 end
 
+local function get_my_monsters()
+    local monsters = {}
+    for _, monster in pairs(workspace.Monsters:GetChildren()) do
+        if monster:FindFirstChild("Target") and monster.Target.Value == game.Players.LocalPlayer then
+            table.insert(monsters, monster)
+        end
+    end
+    return monsters
+end
+
 local function killmobs()
     Pipes.toAHK({
         Type = "set_script_status",
@@ -668,16 +695,34 @@ local function killmobs()
             table.remove(mob_spawns, index)
             continue
         end
+
+        local mob_count = #get_my_monsters()
         if kocmoc.toggles.legit then
             routeToField(find_field(monsterpart.Position))
             if find_field((game.Players.LocalPlayer.Character.PrimaryPart.Position)) == find_field(monsterpart.Position) then
                 game.Players.LocalPlayer.Character.Humanoid:MoveTo(monsterpart.Position)
-                task.wait(3)
+                task.wait(2)
             end
         end
+
+        -- move on if no new mobs are detected after 3 seconds.
+        local timeout = false
+        task.spawn(function()
+            local ltimeout = false
+            task.spawn(function()
+                task.wait(3)
+                ltimeout = true
+            end)
+            repeat task.wait() until #get_my_monsters() ~= mob_count or ltimeout
+            timeout = ltimeout
+        end)
         
         api.humanoidrootpart().CFrame = monsterpart.CFrame
-        repeat api.humanoidrootpart().CFrame = monsterpart.CFrame; avoidmobs(); task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible
+        repeat api.humanoidrootpart().CFrame = monsterpart.CFrame; avoidmobs(); task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible or timeout
+        if timeout then
+            table.remove(mob_spawns, index)
+            continue
+        end
         task.wait(2)
         for i = 1, 3 do gettoken(monsterpart.Position) end
         Pipes.toAHK({
