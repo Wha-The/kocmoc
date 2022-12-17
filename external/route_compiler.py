@@ -12,6 +12,6 @@ def dump_directory(directory):
 		dump[file] = data
 	return dump
 
-output = json.dumps(dump_directory("routes"))
+output = json.dumps(dump_directory("routes"), indent=4)
 with open("output.json", "w") as f:
 	f.write(output)
