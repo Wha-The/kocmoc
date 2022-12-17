@@ -290,7 +290,6 @@ local kocmoc = {
         blue = "Stump Field"
     },
     blacklistedfields = {},
-    killerkocmoc = {},
     bltokens = {},
     toggles = {
         autofarm = false,
@@ -640,15 +639,24 @@ local function avoidmobs()
         end
     end
 end
-
-local function get_my_monsters()
+local get_my_monsters
+do
     local monsters = {}
-    for _, monster in pairs(workspace.Monsters:GetChildren()) do
-        if monster:FindFirstChild("Target") and monster.Target.Value == game.Players.LocalPlayer then
-            table.insert(monsters, monster)
+    workspace.Monsters.ChildAdded:Connect(function(x)
+        local target = x:WaitForChild("Target", 3)
+        if target and target.Value == game.Players.LocalPlayer.Character then
+            table.insert(monsters, x)
+            print(x)
+            x.AncestryChanged:Connect(function(_, parent)
+                if not parent then
+                    table.remove(monsters, table.find(monsters, x))
+                end
+            end)
         end
+    end)
+    get_my_monsters = function()
+        return monsters
     end
-    return monsters
 end
 
 local function killmobs()
@@ -2047,9 +2055,9 @@ task.spawn(function() while task.wait(1) do
         game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster")
     end
     if kocmoc.toggles.autoboosters and hasBoosterQuest() then 
-        if kocmoc.dispensesettings.white then game.ReplicatedStorage.Events.ToyEvent:FireServer("Field Booster") end
-        if kocmoc.dispensesettings.red then game.ReplicatedStorage.Events.ToyEvent:FireServer("Red Field Booster") end
-        if kocmoc.dispensesettings.blue then game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster") end
+        if kocmoc.dispensesettings.white and canToyBeUsed("Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Field Booster") end
+        if kocmoc.dispensesettings.red and canToyBeUsed("Red Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Red Field Booster") end
+        if kocmoc.dispensesettings.blue and canToyBeUsed("Blue Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster") end
     end
     if kocmoc.toggles.clock and canToyBeUsed("Wealth Clock") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock") end
     if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser") end
