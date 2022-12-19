@@ -1,5 +1,5 @@
 local PathfindingService = game:GetService("PathfindingService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local VirtualInputManager = getvirtualinputmanager()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
