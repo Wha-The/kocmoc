@@ -158,7 +158,7 @@ local Pipes = {} do
 end
 
 -- Script tables
-
+local queued = {}
 local temptable = {
     version = "2.16.0",
     blackfield = "Ant Field",
@@ -361,6 +361,15 @@ local kocmoc = {
         blue = false
     }
 }
+local function addToQueue(id, fn, options)
+    options = options or {}
+    if not options.ignore_legit and not kocmoc.toggles.legit then return end
+    if not kocmoc.toggles.autofarm then return false end
+    if queued[id] then return true end
+    queued[id] = fn
+    return true
+end
+
 local defaultkocmoc = kocmoc
 
 -- functions
@@ -646,7 +655,6 @@ do
         local target = x:WaitForChild("Target", 3)
         if target and target.Value == game.Players.LocalPlayer.Character then
             table.insert(monsters, x)
-            print(x)
             x.AncestryChanged:Connect(function(_, parent)
                 if not parent then
                     table.remove(monsters, table.find(monsters, x))
@@ -837,7 +845,13 @@ local function playRoute(start, dest)
         playRoute("hive", dest)
         return
     end
-    local data = HttpService:JSONDecode(proxyfileread(fname))
+    local success, data = pcall(HttpService.JSONDecode, HttpService, proxyfileread(fname))
+    if not success then
+        warn(data)
+        warn("file: "..fname)
+        warn("Data: "..proxyfileread(fname))
+        return
+    end
     return playbackRoute(data)
 end
 
@@ -1037,8 +1051,13 @@ local function collectplanters(force_harvest)
                 end
             end
             if not force_harvest and not should_harvest then continue end
-
-            api.humanoidrootpart().CFrame = v.PotModel.Soil.CFrame
+            if kocmoc.toggles.legit then
+                routeToField(field)
+                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.PotModel.Soil.Position)
+            end
+            if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) ~= field then 
+                api.tween(2, v.PotModel.Soil.CFrame)
+            end
             local Soil = v.PotModel.Soil
             task.wait(1)
             game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(v.ActorID)
@@ -1531,6 +1550,13 @@ local doBPChecks = function()
     if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
     if kocmoc.toggles.autoquest then makequests() end
     if kocmoc.toggles.autoplanters then collectplanters() end
+
+    -- ease queue
+    for id, fn in pairs(queued) do
+        fn()
+        queued[id] = nil
+    end
+
     if tonumber(kocmoc.vars.convertat) < 1 or kocmoc.toggles.autokillmobs then 
         if temptable.act >= kocmoc.vars.monstertimer then
             temptable.started.monsters = true
@@ -1805,59 +1831,59 @@ end end)
 
 task.spawn(function()
     while task.wait(1) do
-		if kocmoc.toggles.killvicious and temptable.detected.vicious and not temptable.converting and not temptable.started.monsters then
-            temptable.started.vicious = true
-            local autoFarmStatus = kocmoc.toggles.autofarm
-            disableall()
-            
-			local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
-			for i, v in pairs(workspace.Particles:GetChildren()) do
-				for x in string.gmatch(v.Name, "Vicious") do
-					if string.find(v.Name, "Vicious") then
-                        if kocmoc.toggles.legit and autoFarmStatus then
-                            routeToField(find_field(v.Position))
-                        end
-                        if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
-                            api.tween(1, CFrame.new(v.Position)) task.wait(1)
-                            api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
-                        else
+		if kocmoc.toggles.killvicious and temptable.detected.vicious then
+            addToQueue("vicious_kill", function()
+                temptable.started.vicious = true
+                local autoFarmStatus = kocmoc.toggles.autofarm
+                disableall()
+                
+                local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
+                for i, v in pairs(workspace.Particles:GetChildren()) do
+                    for x in string.gmatch(v.Name, "Vicious") do
+                        if string.find(v.Name, "Vicious") then
+                            if kocmoc.toggles.legit and autoFarmStatus then
+                                routeToField(find_field(v.Position))
+                            end
                             game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
-                            task.wait(3)
                             if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
                                 api.tween(1, CFrame.new(v.Position)) task.wait(1)
                                 api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
+                            else
+                                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                                task.wait(3)
+                                if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
+                                    api.tween(1, CFrame.new(v.Position)) task.wait(1)
+                                    api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
+                                end
                             end
-                        end
 
-                        break
-					end
-				end
-			end
-			for i, v in pairs(workspace.Particles:GetChildren()) do
-				for x in string.gmatch(v.Name, "Vicious") do
-                    while kocmoc.toggles.killvicious and temptable.detected.vicious do
-                        task.wait()
-                        if string.find(v.Name, "Vicious") then
-                            for i=1, 4 do
-                                temptable.float = true
-                                vichumanoid.CFrame = CFrame.new(v.Position.x, v.Position.y + 3, v.Position.z)
-                                task.wait(.3)
+                            break
+                        end
+                    end
+                end
+                for i, v in pairs(workspace.Particles:GetChildren()) do
+                    for x in string.gmatch(v.Name, "Vicious") do
+                        while kocmoc.toggles.killvicious and temptable.detected.vicious do
+                            task.wait()
+                            if string.find(v.Name, "Vicious") then
+                                for i=1, 4 do
+                                    temptable.float = true
+                                    vichumanoid.CFrame = CFrame.new(v.Position.x, v.Position.y + 3, v.Position.z)
+                                    task.wait(.3)
+                                end
                             end
                         end
                     end
                 end
-			end
-			task.wait(1)
-			Pipes.toAHK({
-                Type = "increment_stat",
-                Stat = "Total Vic Kills",
-            })
-			temptable.float = false
-            temptable.started.vicious = false
-            if kocmoc.toggles.legit and autoFarmStatus then
-                routeToField(kocmoc.vars.field)
-            end
-            enableall()
+                task.wait(1)
+                Pipes.toAHK({
+                    Type = "increment_stat",
+                    Stat = "Total Vic Kills",
+                })
+                temptable.float = false
+                temptable.started.vicious = false
+                enableall()
+            end, {ignore_legit = true})            
 		end
 	end
 end)
@@ -2059,8 +2085,27 @@ task.spawn(function() while task.wait(1) do
         if kocmoc.dispensesettings.red and canToyBeUsed("Red Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Red Field Booster") end
         if kocmoc.dispensesettings.blue and canToyBeUsed("Blue Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster") end
     end
-    if kocmoc.toggles.clock and canToyBeUsed("Wealth Clock") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock") end
-    if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser") end
+    if kocmoc.toggles.clock and canToyBeUsed("Wealth Clock") then
+        if not addToQueue("clock", function() 
+            routeToField("Clover Field")
+            playRoute("Clover Field", "Wealth Clock")
+            task.wait(1)
+            playRoute("Wealth Clock", "Clover Field")
+        end) then
+
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock")
+        end
+    end
+    if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then 
+        if not addToQueue("antpass", function() 
+            routeToField("Dandelion Field")
+            playRoute("Dandelion Field", "Free Ant Pass Dispenser")
+            task.wait(1)
+            playRoute("Free Ant Pass Dispenser", "Dandelion Field")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser")
+        end
+    end
     local gained = temptable.honeycurrent - temptable.honeystart
     gainedhoneylabel:UpdateText("Gained Honey: "..api.suffixstring(gained))
     avghoney_s:UpdateText("Average Honey / Second: "..api.suffixstring(gained / temptable.runningfor))
