@@ -1274,28 +1274,63 @@ end
 local function makequests()
     for i, v in pairs(workspace.NPCs:GetChildren()) do
         if v.Name ~= "Ant Challenge Info" and v.Name ~= "Bubble Bee Man 2" and v.Name ~= "Wind Shrine" and v.Name ~= "Gummy Bear" and v.Name ~= "Honey Bee" then if v:FindFirstChild("Platform") then if v.Platform:FindFirstChild("AlertPos") then if v.Platform.AlertPos:FindFirstChild("AlertGui") then if v.Platform.AlertPos.AlertGui:FindFirstChild("ImageLabel") then
-            image = v.Platform.AlertPos.AlertGui.ImageLabel
-            button = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.ActivateButton.MouseButton1Click
+            local image = v.Platform.AlertPos.AlertGui.ImageLabel
+            local button = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.ActivateButton.MouseButton1Click
             if image.ImageTransparency == 0 then
-                if kocmoc.toggles.tptonpc then
-                    game.Players.LocalPlayer.Character.Humanoid:Move(Vector3.zero)
-                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
-                    task.wait(1)
-                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
-                else
-                    api.tween(2,CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z))
-                    task.wait(3)
-                end
-                for b, z in pairs(getconnections(button)) do    z.Function()    end
-                Pipes.toAHK({
-                    Type = "increment_stat",
-                    Stat = "Quests Done",
-                })
-                task.wait(8)
-                if image.ImageTransparency == 0 then
+                addToQueue("complete_quest_"..v.Name, function()
+                    local hasRoute = table.find({"Black Bear", "Bucko Bee", "Polar Bear", "Brown Bear", "Riley Bee"}, v.Name)
+                    if kocmoc.toggles.legit and hasRoute then
+                        if v.Name == "Polar Bear" then
+                            routeToField("Pumpkin Patch")
+                            playRoute("Pumpkin Patch", "NPC/Polar Bear")
+                        elseif v.Name == "Black Bear" then
+                            routeToField("hive")
+                            playRoute("hive", "NPC/Black Bear")
+                        elseif v.Name == "Bucko Bee" then
+                            routeToField("Blue Flower Field")
+                            playRoute("Blue Flower Field", "NPC/Bucko Bee")
+                        elseif v.Name == "Brown Bear" then
+                            routeToField("Clover Field")
+                            playRoute("Clover Field", "NPC/Brown Bear")
+                        elseif v.Name == "Riley Bee" then
+                            routeToField("Rose Field")
+                            playRoute("Rose Field", "NPC/Riley Bee")
+                        end
+                    else
+                        if kocmoc.toggles.tptonpc then
+                            game.Players.LocalPlayer.Character.Humanoid:Move(Vector3.zero)
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
+                            task.wait(1)
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
+                        else
+                            api.tween(2,CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z))
+                            task.wait(3)
+                        end
+                    end
                     for b, z in pairs(getconnections(button)) do    z.Function()    end
-                end
-                task.wait(2)
+                    Pipes.toAHK({
+                        Type = "increment_stat",
+                        Stat = "Quests Done",
+                    })
+                    task.wait(8)
+                    if image.ImageTransparency == 0 then
+                        for b, z in pairs(getconnections(button)) do    z.Function()    end
+                    end
+                    task.wait(2)
+                    if kocmoc.toggles.legit and hasRoute then
+                        if v.Name == "Polar Bear" then
+                            playRoute("NPC/Polar Bear", "Pumpkin Patch")
+                        elseif v.Name == "Black Bear" then
+                            playRoute("NPC/Black Bear", "hive")
+                        elseif v.Name == "Bucko Bee" then
+                            playRoute("NPC/Bucko Bee", "Blue Flower Field")
+                        elseif v.Name == "Brown Bear" then
+                            playRoute("NPC/Brown Bear", "Clover Field")
+                        elseif v.Name == "Riley Bee" then
+                            playRoute("NPC/Riley Bee", "Rose Field")
+                        end
+                    end
+                end)
             end
         end     
     end end end end end
@@ -2088,9 +2123,9 @@ task.spawn(function() while task.wait(1) do
     if kocmoc.toggles.clock and canToyBeUsed("Wealth Clock") then
         if not addToQueue("clock", function() 
             routeToField("Clover Field")
-            playRoute("Clover Field", "Wealth Clock")
+            playRoute("Clover Field", "Toys/Wealth Clock")
             task.wait(1)
-            playRoute("Wealth Clock", "Clover Field")
+            playRoute("Toys/Wealth Clock", "Clover Field")
         end) then
 
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock")
@@ -2099,9 +2134,9 @@ task.spawn(function() while task.wait(1) do
     if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then 
         if not addToQueue("antpass", function() 
             routeToField("Dandelion Field")
-            playRoute("Dandelion Field", "Free Ant Pass Dispenser")
+            playRoute("Dandelion Field", "Toys/Free Ant Pass Dispenser")
             task.wait(1)
-            playRoute("Free Ant Pass Dispenser", "Dandelion Field")
+            playRoute("Toys/Free Ant Pass Dispenser", "Dandelion Field")
         end) then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser")
         end
