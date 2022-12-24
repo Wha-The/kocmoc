@@ -1,5 +1,5 @@
 local get_parts_of_path = function(path)
-    return string.split(string.replace(path, "\\", "/"), "/")
+    return string.split(string.gsub(path, "\\", "/"), "/")
 end
 local derive_parent = function(path)
     local parts = get_parts_of_path(path)
