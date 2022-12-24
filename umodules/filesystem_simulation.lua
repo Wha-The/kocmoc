@@ -28,8 +28,9 @@ isfile = function(path)
 end
 isfolder = isfile
 writefile = function(path, data)
-    if isfolder(derive_parent(path)) then
-        readfile(derive_parent(path))[derive_end(path)] = data
+    local root = readfile(derive_parent(path))
+    if root then
+        root[derive_end(path)] = data
     end
 end
 makefolder = function(path)
