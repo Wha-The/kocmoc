@@ -49,9 +49,9 @@ end
 function proxywipecache(cachecallback, a1)
 	local callback = CacheCallbackToOriginalCallback[cachecallback]
 	if a1 then
-		CacheCallbackToOriginalCallback[callback][a1] = nil
+		Cache[callback][a1] = nil
 	else
-		CacheCallbackToOriginalCallback[callback] = {}
+		Cache[callback] = {}
 	end
 end
 
