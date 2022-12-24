@@ -2,12 +2,12 @@ local get_parts_of_path = function(path)
     return string.split(path, "/")
 end
 local derive_parent = function(path)
-    local parts = get_parts_of_path()
+    local parts = get_parts_of_path(path)
     parts[#parts] = nil
     return table.concat(parts, "/")
 end
 local derive_end = function(path)
-    local parts = get_parts_of_path()
+    local parts = get_parts_of_path(path)
     return parts[#parts]
 end
 shared.filesystem = shared.filesystem or {}
