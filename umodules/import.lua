@@ -1,9 +1,10 @@
-shared.ModuleCache = shared.ModuleCache or {}
+shared.LoadedModules = shared.LoadedModules or {}
 local function fetchcache(path)
     return function(modulename, moduledownload)
+        print("load module: "..path.."/"..modulename)
         -- Caching will speed up startup times.
         -- umodules stands for Utility Modules.
-        local cached = shared.ModuleCache[path.."/"..modulename] -- Simulate behavior of Roblox Modules
+        local cached = shared.LoadedModules[path.."/"..modulename] -- Simulate behavior of Roblox Modules
         if cached then
             return table.unpack(cached)
         end
@@ -13,7 +14,7 @@ local function fetchcache(path)
         end
 
         local returnd = table.pack(loadstring(readfile("kocmoc/cache/"..path.."/"..modulename))())
-        shared.ModuleCache[path.."/"..modulename] = returnd
+        shared.LoadedModules[path.."/"..modulename] = returnd
         return table.unpack(returnd)
     end
 end
