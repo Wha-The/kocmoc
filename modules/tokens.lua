@@ -1,4 +1,6 @@
-local uimport, import = ((isfile("kocmoc/cache/umodules/import.lua") or not writefile("kocmoc/cache/umodules/import.lua", game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/import.lua"))) and loadstring(readfile("kocmoc/cache/umodules/import.lua"))())
+if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/umodules/import.lua", game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/import.lua")) end
+local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
+
 local token_priority = {
     "Ticket", "Turpentine", "StarTreat", "AtomicTreat", "Diamond", "Gold", "Silver",
 
