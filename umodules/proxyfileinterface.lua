@@ -10,7 +10,7 @@ local function communicate(method, path, body)
 		Body = body,
 	})
 	if not success then
-		messagebox(result) -- i know this hangs the thread
+		messagebox("Error communicating with filesystem proxy: "..result, "Error", 0) -- i know this hangs the thread
 	end
 	return result.Body
 end
