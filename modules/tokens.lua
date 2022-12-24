@@ -35,7 +35,7 @@ end
 local function farm(token)
     if token:GetAttribute("_token_collected") then return end
     game.Players.LocalPlayer.Character.Humanoid:MoveTo(token.Position) 
-    repeat task.wait() until (token.Position-game.Players.LocalPlayer.Character.Position).magnitude <= 3 or not IsToken(token)
+    repeat task.wait() until (token.Position-game.Players.LocalPlayer.Character.PrimaryPart.Position).magnitude <= 3 or not IsToken(token)
     token:SetAttribute("_token_collected", true)
 end
 
