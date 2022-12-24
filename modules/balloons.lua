@@ -26,7 +26,7 @@ local function gethiveballoon()
             if hive.Owner.Value == game.Players.LocalPlayer then
                 for e, balloon in pairs(workspace.Balloons.HiveBalloons:GetChildren()) do
                     if balloon:FindFirstChild("BalloonRoot") then
-                        if (balloon.BalloonRoot.Position-hive.SpawnPos.Value.Position).magnitude < 15 then
+                        if (balloon.BalloonRoot.Position-hive.SpawnPos.Value.Position).Magnitude < 15 then
                             result = balloon
                             break
                         end
@@ -39,12 +39,15 @@ local function gethiveballoon()
 end
 
 local function get_hive_balloon_size()
+    local balloon = gethiveballoon()
+    if not balloon then return 0 end
     local x = 0
-    local s, b = pcall(function()return gethiveballoon().BalloonBody.GuiAttach.Gui.Bar.TextLabel.Text end)
+    local s, b = pcall(function()return balloon.BalloonBody.GuiAttach.Gui.Bar.TextLabel.Text end)
     if s then
         s, x = pcall(function() local a = string.gsub(b, ",", ""); return tonumber(a) end)
     end
-    return s and x
+    if not s then warn(b or x) end
+    return x
 end
 
 return count_stray_balloons, gethiveballoon, get_hive_balloon_size
