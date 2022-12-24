@@ -14,6 +14,7 @@ shared.filesystem = shared.filesystem or {}
 readfile = function(path)
     local current = shared.filesystem
     for _, part in pairs(get_parts_of_path(path)) do
+        if part == "" then continue end
         if not current[part] then
             return false
         end
