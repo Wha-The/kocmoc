@@ -10,13 +10,17 @@ local function fetchcache(path)
         end
 
         if not isfile("kocmoc/cache/"..path.."/"..modulename) then
-            writefile("kocmoc/cache/"..path.."/"..modulename, game:HttpGet(moduledownload or "https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename..".lua"))
+            print("downloading: "..("https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename))
+            writefile("kocmoc/cache/"..path.."/"..modulename, game:HttpGet(moduledownload or "https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename))
         end
-
-        local returnd = table.pack(loadstring(readfile("kocmoc/cache/"..path.."/"..modulename))())
+        local load, err = loadstring(readfile("kocmoc/cache/"..path.."/"..modulename))
+        if not load then
+            error(err)
+        end
+        local returnd = table.pack(load())
+        returnd.n = nil
         shared.LoadedModules[path.."/"..modulename] = returnd
         return table.unpack(returnd)
     end
 end
-
 return fetchcache("umodules"), fetchcache("modules")
