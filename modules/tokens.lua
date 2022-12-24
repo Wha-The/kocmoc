@@ -91,7 +91,6 @@ local function get_default_priority_tokens()
     end)
     return _existingPriorityTokens
 end
-local fieldposition
 local function gettoken(v3)
     if not v3 then
         v3 = fieldposition
