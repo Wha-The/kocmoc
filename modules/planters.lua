@@ -226,7 +226,7 @@ local function collectplanters(force_harvest)
                 game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.PotModel.Soil.Position)
             end
             if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) ~= field then
-                game.Players.LocalPlayer:SetPrimaryPartCFrame(v.PotModel.Soil.CFrame)
+                game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(v.PotModel.Soil.CFrame)
             end
             local Soil = v.PotModel.Soil
             task.wait(1)
