@@ -272,7 +272,7 @@ local function addToQueue(id, fn, options)
 end
 
 local defaultkocmoc = kocmoc
-
+local fieldposition
 -- functions
 
 local function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
@@ -980,12 +980,11 @@ workspace.Particles.ChildAdded:Connect(function(v)
         if v.Name == "WarningDisk" and not temptable.started.vicious and kocmoc.toggles.autofarm and not temptable.started.ant and kocmoc.toggles.farmcoco and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and not temptable.converting then
             table.insert(temptable.coconuts, v)
             getcoco(v)
-            gettoken()
+            gettoken(fieldposition)
         elseif not hasboosttokenquest() and v.Name == "Crosshair" and v ~= nil and v.BrickColor ~= BrickColor.new("Forest green") and not temptable.started.ant and v.BrickColor ~= BrickColor.new("Flint") and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and kocmoc.toggles.autofarm and kocmoc.toggles.collectcrosshairs and not temptable.converting then
             if #temptable.crosshairs <= 3 then
                 table.insert(temptable.crosshairs, v)
                 getcrosshairs(v)
-                gettoken()
             end
         end
     end
@@ -1213,7 +1212,7 @@ task.spawn(function() while task.wait() do
                     if kocmoc.toggles.farmclouds then walk_under_clouds() end
                     if kocmoc.toggles.farmunderballoons then walk_under_balloons() end
                     if kocmoc.toggles.farmbubbles then walk_to_bubble() end
-                    if not kocmoc.toggles.donotfarmtokens then gettoken() end
+                    if not kocmoc.toggles.donotfarmtokens then gettoken(fieldposition) end
                 end
             elseif tonumber(pollenpercentage) >= tonumber(kocmoc.vars.convertat) then
                 if tonumber(kocmoc.vars.convertat) <= 1 then return end
