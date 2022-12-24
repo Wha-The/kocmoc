@@ -38,7 +38,9 @@ if not isfolder("kocmoc/cache") then makefolder("kocmoc/cache") end
 if not isfolder("kocmoc/cache/umodules") then makefolder("kocmoc/cache/umodules") end
 if not isfolder("kocmoc/cache/modules") then makefolder("kocmoc/cache/modules") end
 
-local uimport, import = ((isfile("kocmoc/cache/umodules/import.lua") or not writefile("kocmoc/cache/umodules/import.lua", game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/import.lua"))) and loadstring(readfile("kocmoc/cache/umodules/import.lua"))())
+shared.LoadedModules = nil
+if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/umodules/import.lua", game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/import.lua")) end
+local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
 
 -- load utility modules
 local library                                                                           = uimport("bracketv4.lua")
@@ -57,7 +59,7 @@ local farm, gettoken                                                            
 
 -- test filesystem proxy {
     if not proxyfileexists("kocmoc") then
-        return messagebox("Unable to communicate with filesystem proxy. Please set it up.")
+        return messagebox("Unable to communicate with filesystem proxy. Please set it up.", "Script Stopped", 0)
     end
 -- }
 
@@ -183,7 +185,7 @@ antpart.CanCollide = false
 
 -- config
 
-local kocmoc = {
+kocmoc = {
     rares = {},
     bestfields = {
         red = "Pepper Patch",
@@ -798,7 +800,6 @@ information:CreateLabel("⚠️ - Risky")
 information:CreateLabel("⚙ - Configurable")
 information:CreateLabel("Script rewritten by WhutThe")
 information:CreateLabel("Fork of kocmoc by weuz_ and mrdevl")
-information:CreateLabel("Enabling Settings/Legit Mode is recommended")
 
 local gainedSection = hometab:CreateSection("Gained")
 gainedSection:CreateButton("Reset Timer/Gained Honey", function()
