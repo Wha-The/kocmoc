@@ -1,4 +1,5 @@
-local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists
+local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipecache
+local cachewrap
 local HttpService = game:GetService("HttpService")
 local encode = function(thing) return HttpService:UrlEncode(thing) end
 
@@ -9,9 +10,7 @@ local function communicate(method, path, body)
 		Body = body,
 	})
 	if not success then
-		-- hang thread
-		messagebox(result)
-		while true do task.wait(1e6) end
+		messagebox(result) -- i know this hangs the thread
 	end
 	return result.Body
 end
@@ -29,4 +28,35 @@ function proxyfileexists(file)
 	return communicate("GET", "/exists?file="..encode(file)) == "1"
 end
 
-return proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists
+local CacheCallbackToOriginalCallback = {}
+local Cache = {}
+function cachewrap(callback)
+	Cache[callback] = {}
+	local cachecallback = function(a1, canCache)
+		if canCache and Cache[callback][a1] then
+			return Cache[callback][a1]
+		end
+		local result = callback(a1)
+		if canCache then
+			Cache[callback][a1] = result
+		end
+		return result
+	end
+	CacheCallbackToOriginalCallback[cachecallback] = callback
+	return cachecallback
+end
+
+function proxywipecache(cachecallback, a1)
+	local callback = CacheCallbackToOriginalCallback[cachecallback]
+	if a1 then
+		CacheCallbackToOriginalCallback[callback][a1] = nil
+	else
+		CacheCallbackToOriginalCallback[callback] = {}
+	end
+end
+
+if shared.no_filesystem then
+    return writefile, function(n, d) return writefile(readfile(n)..d) end, readfile, function(n) return isfile(n) or isfolder(n) end, function()end
+end
+
+return proxyfilewrite, proxyfileappend, cachewrap(proxyfileread), cachewrap(proxyfileexists), proxywipecache
