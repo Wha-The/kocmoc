@@ -9,10 +9,11 @@ local token_priority = {
 
     "Token Link",
 
-    "Blueberry", "Strawberry", "Pineapple", "SunflowerSeed", "MoonCharm", "Gumdrop",
+    "Blueberry", "Strawberry", "Pineapple", "SunflowerSeed", "MoonCharm", "Gumdrops",
 
-    "PollenBomb", "Surprise Party", "Inflate Balloons", "Pollen Haze",
+    "PollenBomb", "Surprise Party", "Blue Balloon", "Pollen Haze",
 }
+local maxmagnitude = 70
 local function IsToken(token)
     if not token or not token.Parent then
         return false
@@ -71,7 +72,7 @@ end
 local function go_after_token(v3, r)
     if not v3 then return end
     if not game.Players.LocalPlayer.Character.PrimaryPart then return end
-    if (r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= temptable.magnitude/1.4 and (v3-r.Position).Magnitude <= temptable.magnitude then
+    if (r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= maxmagnitude/1.4 and (v3-r.Position).Magnitude <= maxmagnitude then
         farm(r)
     end
 end
