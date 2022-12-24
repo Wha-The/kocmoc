@@ -51,7 +51,7 @@ local token_index = {} do
     end
 
     -- check if all names are valid
-    local token_texture
+    local token_texture = {}
     for k, v in pairs(token_index) do
         token_texture[v] = k
     end
