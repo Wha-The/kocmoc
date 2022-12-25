@@ -136,12 +136,12 @@ local function place_new_planters()
     end
 
     if #nectars_needed == 0 then return end
-    if #nectars_needed < 3 then
-        while #nectars_needed < 3 do
-            for _, v in pairs(nectars_needed) do
-                table.insert(nectars_needed, v)
-            end
+    if #nectars_needed == 2 then
+        for _, v in pairs(nectars_needed) do
+            table.insert(nectars_needed, v)
         end
+    elseif #nectars_needed == 1 then
+        nectars_needed = {nectars_needed[1], nectars_needed[1], nectars_needed[1]}
     end
 
     -- Load Planter Degration File
