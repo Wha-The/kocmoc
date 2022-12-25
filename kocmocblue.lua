@@ -52,7 +52,7 @@ local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipe
 local count_stray_balloons, gethiveballoon, get_hive_balloon_size                               = import("balloons.lua")
 local find_field                                                                                = import("find_field.lua")
 local playRoute, routeToField                                                                   = import("routes.lua")
-local compile_planters, place_new_planters, collectplanters, allplanters, nectarprioritypresets = import("planters.lua")
+local compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets = import("planters.lua")
 local Pipes                                                                                     = import("Pipes.lua")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
 local farm, gettoken                                                                            = import("tokens.lua")
@@ -939,7 +939,7 @@ for _, nectar in pairs(allnectars) do
     tog:SetState(true)
 end
 
-_buttons["planters"]["priority"] = guisettings:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
+_buttons["planters"]["priority"] = extrtab:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
     kocmoc.planters.priority = presetName
 end)
 local farmsettings = setttab:CreateSection("Autofarm Settings")
