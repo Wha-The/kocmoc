@@ -72,6 +72,14 @@ function compile_planters()
     })
 end
 
+local get_nectar_priority = function()
+    local NectarPriority = {}
+    for _, id in pairs(nectarprioritypresets[kocmoc.planters.priority]) do
+        table.insert(NectarPriority, allnectars[id])
+    end
+    return NectarPriority
+end
+
 local function place_new_planters()
     local total = 0
     for i,v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do 
@@ -81,10 +89,7 @@ local function place_new_planters()
     end
     if total >= 3 then return end -- already full, can't plant more
 
-    local NectarPriority = {}
-    for _, id in pairs(nectarprioritypresets[kocmoc.planters.priority]) do
-        table.insert(NectarPriority, allnectars[id])
-    end
+    local NectarPriority = get_nectar_priority()
 
     -- populate "occupied_fields" and "planters_in_use"
     local occupied_fields = {}
@@ -223,6 +228,7 @@ local function place_new_planters()
 end
 
 local function collectplanters(force_harvest)
+    local NectarPriority = get_nectar_priority()
     for i, v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do
         if v.IsMine then
             local field = find_field(v.PotModel.Soil.Position)
