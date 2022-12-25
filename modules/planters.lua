@@ -6,6 +6,7 @@ local find_field 																		= import("find_field.lua")
 local playRoute, routeToField 															= import("routes.lua")
 local Pipes 																			= import("Pipes.lua")
 local farm, gettoken 																	= import("tokens.lua")
+local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list  = import("buffs.lua")
 
 local HttpService = game:GetService("HttpService")
 
@@ -26,12 +27,19 @@ local PlanterRecommendedFields = {
         Pots = {"Candy Planter", "Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
         Fields = {"Stump Field", "Rose Field", "Spider Field", "Mushroom Field"},
     },
-    -- ["Invigorating Nectar"] = {
-    --     Pots = {"Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
-    --     Fields = {"Pepper Patch", "Spider Field", "Mountain Top Field", "Cactus Field", "Clover Field"},
-    -- }
+    ["Invigorating Nectar"] = {
+        Pots = {"Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
+        Fields = {"Pepper Patch", "Spider Field", "Mountain Top Field", "Cactus Field", "Clover Field"},
+    }
 }
-local NectarPriority = {"Comforting Nectar", "Motivating Nectar", "Satisfying Nectar", "Refreshing Nectar"--[[, "Invigorating Nectar"]]}
+
+local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar" "Refreshing Nectar", "Satisfying Nectar"}
+local nectarprioritypresets = {
+    Blue = {1, 3, 5, 4, 2},
+    Red = {2, 4, 5, 3, 1},
+    White = {5, 1, 4, 3, 2},
+}
+
 local GetPlanterData = require(game.ReplicatedStorage.PlanterTypes).Get
 
 function compile_planters()
@@ -73,6 +81,11 @@ local function place_new_planters()
     end
     if total >= 3 then return end -- already full, can't plant more
 
+    local NectarPriority = {}
+    for _, id in pairs(nectarprioritypresets[kocmoc.planters.priority]) do
+        table.insert(NectarPriority, allnectars[id])
+    end
+
     -- populate "occupied_fields" and "planters_in_use"
     local occupied_fields = {}
     local planters_in_use = {}
@@ -96,9 +109,11 @@ local function place_new_planters()
     -- compute the Nectar the player needs
     local nectars_needed = {}
     for index, nectar in pairs(NectarPriority) do
+        if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked on
+
         local percent = get_buff_percentage(nectar)
         local recommended_hover_above = index <= 3 and 0.8 or 0.6
-        if table.find(nectars_already_working_on, nectar) and percent > (recommended_hover_above/2) then continue end
+        if table.find(nectars_already_working_on, nectar) and percent > (recommended_hover_above/1.5) then continue end
         if percent < recommended_hover_above then
             table.insert(nectars_needed, nectar)
         end
@@ -112,6 +127,15 @@ local function place_new_planters()
         table.sort(nectars, function(a, b) return a[1] < b[1] end)
         for _, data in pairs(nectars) do
             table.insert(nectars_needed, data[2])
+        end
+    end
+
+    if #nectars_needed == 0 then return end
+    if #nectars_needed < 3 then
+        while #nectars_needed < 3 do
+            for _, v in pairs(nectars_needed) do
+                table.insert(nectars_needed, v)
+            end
         end
     end
 
@@ -254,4 +278,4 @@ local function collectplanters(force_harvest)
     place_new_planters()
 end
 
-return compile_planters, place_new_planters, collectplanters
+return compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets
