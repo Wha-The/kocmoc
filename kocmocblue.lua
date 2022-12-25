@@ -939,7 +939,7 @@ for _, nectar in pairs(allnectars) do
     tog:SetState(true)
 end
 
-_buttons["planters"]["priority"] = extrtab:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
+_buttons["planters"]["priority"] = planters:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
     kocmoc.planters.priority = presetName
 end)
 local farmsettings = setttab:CreateSection("Autofarm Settings")
