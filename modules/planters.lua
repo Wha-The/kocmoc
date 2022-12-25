@@ -137,9 +137,7 @@ local function place_new_planters()
 
     if #nectars_needed == 0 then return end
     if #nectars_needed == 2 then
-        for _, v in pairs(nectars_needed) do
-            table.insert(nectars_needed, v)
-        end
+        nectars_needed = {nectars_needed[1], nectars_needed[2], nectars_needed[1]}
     elseif #nectars_needed == 1 then
         nectars_needed = {nectars_needed[1], nectars_needed[1], nectars_needed[1]}
     end
