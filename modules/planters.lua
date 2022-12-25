@@ -33,7 +33,7 @@ local PlanterRecommendedFields = {
     }
 }
 
-local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar" "Refreshing Nectar", "Satisfying Nectar"}
+local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar", "Refreshing Nectar", "Satisfying Nectar"}
 local nectarprioritypresets = {
     Blue = {1, 3, 5, 4, 2},
     Red = {2, 4, 5, 3, 1},
