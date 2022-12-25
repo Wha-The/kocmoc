@@ -43,19 +43,19 @@ if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/u
 local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
 
 -- load utility modules
-local library                                                                           = uimport("bracketv4.lua")
-local api                                                                               = uimport("api.lua", "https://raw.githubusercontent.com/Boxking776/kocmoc/main/api.lua")
-local pathfind, playbackRoute                                                           = uimport("pathfind.lua")
-local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipecache   = uimport("proxyfileinterface.lua")
+local library                                                                                   = uimport("bracketv4.lua")
+local api                                                                                       = uimport("api.lua", "https://raw.githubusercontent.com/Boxking776/kocmoc/main/api.lua")
+local pathfind, playbackRoute                                                                   = uimport("pathfind.lua")
+local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipecache           = uimport("proxyfileinterface.lua")
 
 -- load modules
-local count_stray_balloons, gethiveballoon, get_hive_balloon_size                       = import("balloons.lua")
-local find_field                                                                        = import("find_field.lua")
-local playRoute, routeToField                                                           = import("routes.lua")
-local compile_planters, place_new_planters, collectplanters                             = import("planters.lua")
-local Pipes                                                                             = import("Pipes.lua")
-local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list  = import("buffs.lua")
-local farm, gettoken                                                                    = import("tokens.lua")
+local count_stray_balloons, gethiveballoon, get_hive_balloon_size                               = import("balloons.lua")
+local find_field                                                                                = import("find_field.lua")
+local playRoute, routeToField                                                                   = import("routes.lua")
+local compile_planters, place_new_planters, collectplanters, allplanters, nectarprioritypresets = import("planters.lua")
+local Pipes                                                                                     = import("Pipes.lua")
+local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
+local farm, gettoken                                                                            = import("tokens.lua")
 
 -- test filesystem proxy {
     if not proxyfileexists("kocmoc") then
@@ -260,8 +260,13 @@ kocmoc = {
         white = false,
         red = false,
         blue = false
-    }
+    },
+    planters = {
+        priority = "Blue",
+        farmnectars = {},
+    },
 }
+for _, nectar in pairs(allnectars) do kocmoc.planters.farmnectars[nectar] = true end
 local function addToQueue(id, fn, options)
     options = options or {}
     if not options.ignore_legit and not kocmoc.toggles.legit then return end
@@ -849,7 +854,7 @@ _buttons["clock"] = farmt:CreateToggle("Auto Wealth Clock", nil, function(State)
 _buttons["collectgingerbreads"] = farmt:CreateToggle("Auto Gingerbread Bears", nil, function(State) kocmoc.toggles.collectgingerbreads = State end)
 _buttons["autosamovar"] = farmt:CreateToggle("Auto Samovar", nil, function(State) kocmoc.toggles.autosamovar = State end)
 _buttons["autostockings"] = farmt:CreateToggle("Auto Stockings", nil, function(State) kocmoc.toggles.autostockings = State end)
-_buttons["autoplanters"] = farmt:CreateToggle("Auto Planters", nil, function(State) kocmoc.toggles.autoplanters = State end):AddToolTip("Will re-plant your planters after converting, if they hit 100%")
+_buttons["autoplanters"] = farmt:CreateToggle("Auto Planters ⚙", nil, function(State) kocmoc.toggles.autoplanters = State end):AddToolTip("Will re-plant your planters after converting, if they hit 100%")
 _buttons["autocandles"] = farmt:CreateToggle("Auto Honey Candles", nil, function(State) kocmoc.toggles.autocandles = State end)
 _buttons["autofeast"] = farmt:CreateToggle("Auto Beesmas Feast", nil, function(State) kocmoc.toggles.autofeast = State end)
 _buttons["autoonettart"] = farmt:CreateToggle("Auto Onett's Lid Art", nil, function(State) kocmoc.toggles.autoonettart = State end)
@@ -924,6 +929,19 @@ extras:CreateTextBox("Glider Float", "", true, function(Value) local StatCache =
 extras:CreateButton("Invisibility", function(State) api.teleport(CFrame.new(0,0,0)) wait(1) if game.Players.LocalPlayer.Character:FindFirstChild('LowerTorso') then Root = game.Players.LocalPlayer.Character.LowerTorso.Root:Clone() game.Players.LocalPlayer.Character.LowerTorso.Root:Destroy() Root.Parent = game.Players.LocalPlayer.Character.LowerTorso api.teleport(game:GetService("Players").LocalPlayer.SpawnPos.Value) end end)
 extras:CreateToggle("Float", nil, function(State) temptable.float = State end)
 
+_buttons["planters"] = {}
+local planters = extrtab:CreateSection("Planters")
+planters:CreateLabel("Keep nectars up (recommended: 4)")
+
+for _, nectar in pairs(allnectars) do
+    local tog = planters:CreateToggle(nectar, nil, function(State) kocmoc.planters.farmnectars[nectar] = State end)
+    _buttons["planters"][nectar] = tog
+    tog:SetState(true)
+end
+
+_buttons["planters"]["priority"] = guisettings:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
+    kocmoc.planters.priority = presetName
+end)
 local farmsettings = setttab:CreateSection("Autofarm Settings")
 _buttons["convertballoons"] = farmsettings:CreateToggle("Convert Hive Balloon",nil, function(State) kocmoc.toggles.convertballoons = State end)
 _buttons["donotfarmtokens"] = farmsettings:CreateToggle("Don't Farm Tokens",nil, function(State) kocmoc.toggles.donotfarmtokens = State end)
@@ -1617,9 +1635,9 @@ game:GetService("Players").LocalPlayer.Idled:Connect(function() vu:Button2Down(V
 
 
 task.spawn(function() while task.wait() do
-    pos = game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+    local pos = game.Players.LocalPlayer.Character.PrimaryPart.Position
     task.wait()
-    if (pos-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 0 then
+    if (pos-game.Players.LocalPlayer.Character.PrimaryPart.Position).Magnitude > 0 then
         temptable.running = true
     else
         temptable.running = false
@@ -1638,6 +1656,10 @@ load_config = function(configname) -- also doubles as a function to refresh all 
 
     for _, dispense in pairs({"rj", "blub", "straw", "treat", "coconut", "glue", "white", "blue", "red"}) do
         _buttons["dispense"][dispense]:SetState(kocmoc.dispensesettings[dispense])
+    end
+
+    for _, nectar in pairs(allnectars) do
+        _buttons["planters"][nectar]:SetState(kocmoc.planters.farmnectars[nectar])
     end
 
     for _, slider in pairs({"convertat", "convertatballoon", "walkspeed", "jumppower"}) do
