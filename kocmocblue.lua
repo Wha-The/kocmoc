@@ -212,6 +212,7 @@ kocmoc = {
         autodispense = false,
         clock = false,
         freeantpass = false,
+        freerobopass = false,
         honeystorm = false,
         autodoquest = false,
         disableseperators = false,
@@ -861,6 +862,7 @@ _buttons["autocandles"] = farmt:CreateToggle("Auto Honey Candles", nil, function
 _buttons["autofeast"] = farmt:CreateToggle("Auto Beesmas Feast", nil, function(State) kocmoc.toggles.autofeast = State end)
 _buttons["autoonettart"] = farmt:CreateToggle("Auto Onett's Lid Art", nil, function(State) kocmoc.toggles.autoonettart = State end)
 _buttons["freeantpass"] = farmt:CreateToggle("Auto Free Antpasses", nil, function(State) kocmoc.toggles.freeantpass = State end)
+_buttons["freerobopass"] = farmt:CreateToggle("Auto Free Robopasses", nil, function(State) kocmoc.toggles.freerobopass = State end)
 _buttons["farmsprouts"] = farmt:CreateToggle("Farm Sprouts", nil, function(State) kocmoc.toggles.farmsprouts = State end)
 _buttons["farmpuffshrooms"] = farmt:CreateToggle("Farm Puffshrooms", nil, function(State) kocmoc.toggles.farmpuffshrooms = State end)
 _buttons["farmsnowflakes"] = farmt:CreateToggle("Farm Snowflakes ⚠️", nil, function(State) kocmoc.toggles.farmsnowflakes = State end)
@@ -1570,6 +1572,16 @@ task.spawn(function() while task.wait(1) do
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser")
         end
     end
+    if kocmoc.toggles.freerobopass and canToyBeUsed("Free Robo Pass Dispenser") then
+        if not addToQueue("robopass", function() 
+            routeToField("Mountain Top Field")
+            playRoute("Mountain Top Field", "Toys/Free Robo Pass Dispenser")
+            task.wait(1)
+            playRoute("Toys/Free Robo Pass Dispenser", "Mountain Top Field")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Robo Pass Dispenser")
+        end
+    end
     local gained = temptable.honeycurrent - temptable.honeystart
     gainedhoneylabel:UpdateText("Gained Honey: "..api.suffixstring(gained))
     avghoney_s:UpdateText("Average Honey / Second: "..api.suffixstring(gained / temptable.runningfor))
@@ -1681,7 +1693,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         kocmoc = HttpService:JSONDecode(readfile("kocmoc/BSS_"..configname..".json"))
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
-        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "honeystorm",
+        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "honeystorm",
             "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
