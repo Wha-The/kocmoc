@@ -1541,8 +1541,8 @@ task.spawn(function() while task.wait(1) do
             end
         end
     end
-    if kocmoc.toggles.autosamovar and workspace.Toys:FindFirstChild("Samovar") then
-        if not addToQueue("bessmasfeast", function() 
+    if kocmoc.toggles.autosamovar and workspace.Toys:FindFirstChild("Samovar") and canToyBeUsed("Samovar") then
+        if not addToQueue("samovar", function() 
             routeToField("Stump Field")
             playRoute("Stump Field", "Toys/Samovar")
             task.wait(1)
