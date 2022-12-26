@@ -230,6 +230,7 @@ kocmoc = {
         convertballoons = false,
         autostockings = false,
         autosamovar = false,
+        autosnowmachine = false,
         autoonettart = false,
         autocandles = false,
         autofeast = false,
@@ -853,6 +854,7 @@ _buttons["autoboosters"] = farmt:CreateToggle("Auto Field Boosters ⚙", nil, fu
 _buttons["clock"] = farmt:CreateToggle("Auto Wealth Clock", nil, function(State) kocmoc.toggles.clock = State end)
 _buttons["collectgingerbreads"] = farmt:CreateToggle("Auto Gingerbread Bears", nil, function(State) kocmoc.toggles.collectgingerbreads = State end)
 _buttons["autosamovar"] = farmt:CreateToggle("Auto Samovar", nil, function(State) kocmoc.toggles.autosamovar = State end)
+_buttons["autosnowmachine"] = farmt:CreateToggle("Auto Snow Machine", nil, function(State) kocmoc.toggles.autosnowmachine = State end)
 _buttons["autostockings"] = farmt:CreateToggle("Auto Stockings", nil, function(State) kocmoc.toggles.autostockings = State end)
 _buttons["autoplanters"] = farmt:CreateToggle("Auto Planters ⚙", nil, function(State) kocmoc.toggles.autoplanters = State end):AddToolTip("Will re-plant your planters after converting, if they hit 100%")
 _buttons["autocandles"] = farmt:CreateToggle("Auto Honey Candles", nil, function(State) kocmoc.toggles.autocandles = State end)
@@ -1423,16 +1425,6 @@ end)
 
 task.spawn(function() while task.wait(2) do
     if not temptable.converting then
-        if kocmoc.toggles.autosamovar and workspace.Toys:FindFirstChild("Samovar") and canToyBeUsed("Samovar") then
-            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Samovar")
-            platformm = workspace.Toys.Samovar.Platform
-            for i,v in pairs(workspace.Collectibles:GetChildren()) do
-                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
-                    api.humanoidrootpart().CFrame = v.CFrame
-                    task.wait(.5)
-                end
-            end
-        end
         if kocmoc.toggles.autostockings and workspace.Toys:FindFirstChild("Stockings") and canToyBeUsed("Stockings") then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Stockings")
             platformm = workspace.Toys.Stockings.Platform
@@ -1456,16 +1448,6 @@ task.spawn(function() while task.wait(2) do
         if kocmoc.toggles.autocandles and workspace.Toys:FindFirstChild("Honeyday Candles") and canToyBeUsed("Honeyday Candles") then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Honeyday Candles")
             platformm = workspace.Toys["Honeyday Candles"].Platform
-            for i,v in pairs(workspace.Collectibles:GetChildren()) do
-                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
-                    api.humanoidrootpart().CFrame = v.CFrame
-                    task.wait(.5)
-                end
-            end
-        end
-        if kocmoc.toggles.autofeast and workspace.Toys:FindFirstChild("Beesmas Feast") and canToyBeUsed("Beesmas Feast") then
-            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Beesmas Feast")
-            platformm = workspace.Toys["Beesmas Feast"].Platform
             for i,v in pairs(workspace.Collectibles:GetChildren()) do
                 if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
                     api.humanoidrootpart().CFrame = v.CFrame
@@ -1522,12 +1504,62 @@ task.spawn(function() while task.wait(1) do
             routeToField("Clover Field")
             playRoute("Clover Field", "Toys/Wealth Clock")
             task.wait(1)
-            playRoute("Toys/Wealth Clock", "Clover Field")
+            playRoute("Toys/Wealth Clock", "Toys/Stockings")
+            task.wait(1)
+            playRoute("Toys/Stockings", "Clover Field")
         end) then
-
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock")
+
+            if workspace.Toys:FindFirstChild("Stockings") and canToyBeUsed("Stockings") then
+                game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Stockings")
+                local platformm = workspace.Toys["Stockings"].Platform
+                for i,v in pairs(workspace.Collectibles:GetChildren()) do
+                    if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
+                        api.humanoidrootpart().CFrame = v.CFrame
+                        task.wait(.5)
+                    end
+                end
+            end
         end
     end
+    if kocmoc.toggles.autofeast and workspace.Toys:FindFirstChild("Beesmas Feast") and canToyBeUsed("Beesmas Feast") then
+        if not addToQueue("bessmasfeast", function() 
+            routeToField("Pumpkin Patch")
+            playRoute("Pumpkin Patch", "Toys/Beesmas Feast")
+            task.wait(1)
+            playRoute("Toys/Beesmas Feast", "Pumpkin Patch")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Beesmas Feast")
+            local platformm = workspace.Toys["Beesmas Feast"].Platform
+            for i,v in pairs(workspace.Collectibles:GetChildren()) do
+                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
+                    api.humanoidrootpart().CFrame = v.CFrame
+                    task.wait(.5)
+                end
+            end
+        end
+    end
+    if kocmoc.toggles.autosamovar and workspace.Toys:FindFirstChild("Samovar") then
+        if not addToQueue("bessmasfeast", function() 
+            routeToField("Stump Field")
+            playRoute("Stump Field", "Toys/Samovar")
+            task.wait(1)
+            playRoute("Toys/Samovar", "Stump Field")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Samovar")
+            local platformm = workspace.Toys.Samovar.Platform
+            for i,v in pairs(workspace.Collectibles:GetChildren()) do
+                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
+                    api.humanoidrootpart().CFrame = v.CFrame
+                    task.wait(.5)
+                end
+            end
+        end
+    end
+    if kocmoc.toggles.autosnowmachine and workspace.Toys:FindFirstChild("Snow Machine") and canToyBeUsed("Snow Machine") then
+        game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Snow Machine")
+    end
+
     if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then 
         if not addToQueue("antpass", function() 
             routeToField("Dandelion Field")
@@ -1649,7 +1681,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         kocmoc = HttpService:JSONDecode(readfile("kocmoc/BSS_"..configname..".json"))
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
-        "collectgingerbreads", "autosamovar", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "honeystorm",
+        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "honeystorm",
             "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
@@ -1691,5 +1723,10 @@ do
     end
 end
 if shared.autoload then if isfile("kocmoc/BSS_"..shared.autoload..".json") then load_config(shared.autoload) end end
-for _, part in pairs(workspace:FindFirstChild("FieldDecos"):GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency task.wait() end end
-for _, part in pairs(workspace:FindFirstChild("Decorations"):GetDescendants()) do if part:IsA("BasePart") and (part.Parent.Name == "Bush" or part.Parent.Name == "Blue Flower" or part.Parent.Name == "Mushroom") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency task.wait() end end
+local function _hidePart(part)
+    if part:IsA("BasePart") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency end
+end
+if workspace.Toys:FindFirstChild("Snowbear") then for _, ball in pairs(workspace.Toys.Snowbear.Snowman:GetDescendants()) do _hidePart(ball) end end
+if workspace.Leaderboards:FindFirstChild("SnowbearKills") then for _, part in pairs(workspace.Leaderboards.SnowbearKills:GetDescendants()) do _hidePart(part) end _hidePart(workspace.Leaderboards:FindFirstChild("SnowbearKills")) end
+for _, part in pairs(workspace:FindFirstChild("FieldDecos"):GetDescendants()) do _hidePart(part) end
+for _, part in pairs(workspace:FindFirstChild("Decorations"):GetDescendants()) do if part:IsA("BasePart") and (part.Parent.Name == "Bush" or part.Parent.Name == "Blue Flower" or part.Parent.Name == "Mushroom") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency end end
