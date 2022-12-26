@@ -1,15 +1,13 @@
 if not isfolder("kocmoc") then makefolder("kocmoc") end
 if not isfolder("kocmoc/cache") then makefolder("kocmoc/cache") end
-local function wrapcache(modulename, moduledownload)
-    if not isfile("kocmoc/cache/"..modulename) then
-        -- download module
-        writefile("kocmoc/cache/"..modulename, game:HttpGet(moduledownload))
-    end
-    return loadstring(readfile("kocmoc/cache/"..modulename))()
-end
+if not isfolder("kocmoc/cache/umodules") then makefolder("kocmoc/cache/umodules") end
+if not isfolder("kocmoc/cache/modules") then makefolder("kocmoc/cache/modules") end
 
-local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists = wrapcache("proxyfileinterface.lua", "https://raw.githubusercontent.com/Wha-The/Scripts/main/proxyfileinterface.lua")
-local pathfind, playbackRoute = wrapcache("pathfind.lua", "https://raw.githubusercontent.com/Wha-The/Scripts/main/pathfind.lua")
+if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/umodules/import.lua", game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/import.lua")) end
+local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
+
+local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipecache	= uimport("proxyfileinterface.lua")
+local pathfind, playbackRoute															= uimport("pathfind.lua")
 
 local UserInputService = game:GetService("UserInputService")
 local ScreenGui = game:GetObjects("rbxassetid://11806110065")[1]:Clone()
