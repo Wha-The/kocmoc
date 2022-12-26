@@ -1572,7 +1572,7 @@ task.spawn(function() while task.wait(1) do
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Free Ant Pass Dispenser")
         end
     end
-    if kocmoc.toggles.freerobopass and canToyBeUsed("Free Robo Pass Dispenser") then
+    if kocmoc.toggles.freerobopass and canToyBeUsed("Free Robo Pass Dispenser") and stats.Eggs.RoboPass < 10 then
         if not addToQueue("robopass", function() 
             routeToField("Mountain Top Field")
             playRoute("Mountain Top Field", "Toys/Free Robo Pass Dispenser")
