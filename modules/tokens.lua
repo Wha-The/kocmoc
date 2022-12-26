@@ -2,16 +2,17 @@ if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/u
 local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
 
 local token_priority = {
+    "Gingerbread", "Snowflake",
     "Ticket", "Turpentine", "StarTreat", "AtomicTreat", "Diamond", "Gold", "Silver",
 
     "Neonberry", "SoftWax", "HardWax", "CausticWax", "SwirledWax", "MagicBean",
     "Glue", "Glitter", "BlueExtract", "RedExtract", "Enzymes", "Oil",
 
-    "Token Link",
+    "Smile Token", "Token Link",
 
     "Blueberry", "Strawberry", "Pineapple", "SunflowerSeed", "MoonCharm", "Gumdrops",
 
-    "PollenBomb", "Surprise Party", "Blue Balloon", "Pollen Haze",
+    "PollenBomb", "Surprise Party", "Blue Balloon", "Pollen Haze", "Summon Frog"
 }
 local maxmagnitude = 70
 local function IsToken(token)
@@ -77,9 +78,20 @@ local function go_after_token(v3, r)
     end
 end
 
+local function getCollectibles()
+    local collectibles = {}
+    for _, r in pairs(workspace.Collectibles:GetChildren()) do
+        table.insert(collectibles, r)
+    end
+    for _, r in pairs(workspace.CurrentCamera.DupedTokens:GetChildren()) do
+        table.insert(collectibles, r)
+    end
+    return collectibles
+end
+
 local function get_default_priority_tokens()
     local _existingPriorityTokens = {}
-    for _, _r in pairs(workspace.Collectibles:GetChildren()) do
+    for _, _r in pairs(getCollectibles()) do
         if not IsToken(_r) then continue end
         local name = identifyToken(_r)
         if table.find(token_priority, name) then
@@ -95,13 +107,16 @@ local function gettoken(v3)
     if not v3 then
         v3 = fieldposition
     end
-    for e,r in pairs(workspace.Collectibles:GetChildren()) do
+
+    for e,r in pairs(getCollectibles()) do
         for _, _r in pairs(get_default_priority_tokens()) do
             if not IsToken(_r) then continue end
             go_after_token(v3, _r)
         end
         if not IsToken(r) then continue end
-        go_after_token(v3, r)
+        if r.Parent ~= workspace.CurrentCamera.DupedTokens then
+            go_after_token(v3, r)
+        end
     end
 end
 return farm, gettoken
