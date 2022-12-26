@@ -2,7 +2,7 @@ if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/u
 local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
 
 local token_priority = {
-    "Gingerbread", "Snowflake",
+    "GingerbreadBear", "Snowflake",
     "Ticket", "Turpentine", "StarTreat", "AtomicTreat", "Diamond", "Gold", "Silver",
 
     "Neonberry", "SoftWax", "HardWax", "CausticWax", "SwirledWax", "MagicBean",
