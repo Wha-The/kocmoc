@@ -1107,7 +1107,7 @@ task.spawn(function() while task.wait() do
                             if not string.match(v.Parent.Parent.TitleBar.Text, "Brown Bear") and (string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom")) then
                                 local pollentypes = {'White Pollen', "Red Pollen", "Blue Pollen", "Blue Flowers", "Red Flowers", "White Flowers"}
                                 local text = v.Text
-                                if api.returnvalue(fieldstable, text) and not string.find(v.Text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
+                                if api.returnvalue(fieldstable, text) and string.find(text, "Collect") and string.find(text, "Pollen from") and not string.find(text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
                                     local d = api.returnvalue(fieldstable, text)
                                     fieldselected = workspace.FlowerZones[d]
                                     if table.find(temptable.redfields, d) then
@@ -1118,7 +1118,7 @@ task.spawn(function() while task.wait() do
                                         mask = "Gummy Mask"
                                     end
                                     break
-                                elseif api.returnvalue(pollentypes, text) and not string.find(v.Text, 'Complete!') then
+                                elseif api.returnvalue(pollentypes, text) and not string.find(text, 'Complete!') then
                                     local d = api.returnvalue(pollentypes, text)
 
                                     if d == "Blue Flowers" or d == "Blue Pollen" then
