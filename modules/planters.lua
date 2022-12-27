@@ -127,6 +127,7 @@ local function place_new_planters()
     if #nectars_needed <= 0 then
         local nectars = {}
         for _, nectar in pairs(NectarPriority) do
+            if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked on
             table.insert(nectars, {get_buff_percentage(nectar), nectar})
         end
         table.sort(nectars, function(a, b) return a[1] < b[1] end)
