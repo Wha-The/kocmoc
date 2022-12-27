@@ -208,6 +208,7 @@ kocmoc = {
         loopspeed = false,
         loopjump = false,
         autoquest = false,
+        automask = false,
         autoboosters = false,
         autodispense = false,
         clock = false,
@@ -869,6 +870,7 @@ _buttons["farmsnowflakes"] = farmt:CreateToggle("Farm Snowflakes ⚠️", nil, f
 _buttons["farmrares"] = farmt:CreateToggle("Teleport To Rares ⚠️", nil, function(State) kocmoc.toggles.farmrares = State end)
 _buttons["autoquest"] = farmt:CreateToggle("Auto Accept/Confirm Quests ⚙", nil, function(State) kocmoc.toggles.autoquest = State end)
 _buttons["autodoquest"] = farmt:CreateToggle("Auto Do Quests ⚙", nil, function(State) kocmoc.toggles.autodoquest = State end)
+_buttons["automask"] = farmt:CreateToggle("Auto Mask", nil, function(State) kocmoc.toggles.automask = State end):AddToolTip("Equips the right mask for the field you're farming in (only when autofarm is on). Useful for quests.")
 _buttons["honeystorm"] = farmt:CreateToggle("Auto Honeystorm", nil, function(State) kocmoc.toggles.honeystorm = State end)
 
 local mobkill = combtab:CreateSection("Combat")
@@ -1172,7 +1174,7 @@ task.spawn(function() while task.wait() do
                     lastPuff = fieldposition
                 end
             end
-            if statsget()["SessionAccessories"]["Hat"] ~= mask then
+            if kocmoc.toggles.automask and statsget()["SessionAccessories"]["Hat"] ~= mask then
                 print("Equip: "..mask)
                 task.spawn(equip_mask, mask)
                 statsget()["SessionAccessories"]["Hat"] = mask
@@ -1447,16 +1449,6 @@ task.spawn(function() while task.wait(2) do
                 end
             end
         end
-        if kocmoc.toggles.autocandles and workspace.Toys:FindFirstChild("Honeyday Candles") and canToyBeUsed("Honeyday Candles") then
-            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Honeyday Candles")
-            platformm = workspace.Toys["Honeyday Candles"].Platform
-            for i,v in pairs(workspace.Collectibles:GetChildren()) do
-                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
-                    api.humanoidrootpart().CFrame = v.CFrame
-                    task.wait(.5)
-                end
-            end
-        end
     end
 end end)
 
@@ -1514,6 +1506,7 @@ task.spawn(function() while task.wait(1) do
 
             if workspace.Toys:FindFirstChild("Stockings") and canToyBeUsed("Stockings") then
                 game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Stockings")
+                task.wait(3)
                 local platformm = workspace.Toys["Stockings"].Platform
                 for i,v in pairs(workspace.Collectibles:GetChildren()) do
                     if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
@@ -1532,6 +1525,7 @@ task.spawn(function() while task.wait(1) do
             playRoute("Toys/Beesmas Feast", "Pumpkin Patch")
         end) then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Beesmas Feast")
+            task.wait(3)
             local platformm = workspace.Toys["Beesmas Feast"].Platform
             for i,v in pairs(workspace.Collectibles:GetChildren()) do
                 if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
@@ -1549,7 +1543,25 @@ task.spawn(function() while task.wait(1) do
             playRoute("Toys/Samovar", "Stump Field")
         end) then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Samovar")
+            task.wait(3)
             local platformm = workspace.Toys.Samovar.Platform
+            for i,v in pairs(workspace.Collectibles:GetChildren()) do
+                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
+                    api.humanoidrootpart().CFrame = v.CFrame
+                    task.wait(.5)
+                end
+            end
+        end
+    end
+    if kocmoc.toggles.autocandles and workspace.Toys:FindFirstChild("Honeyday Candles") and canToyBeUsed("Honeyday Candles") then
+        if not addToQueue("honeydaycandles", function() 
+            routeToField("Rose Field")
+            playRoute("Rose Field", "Toys/Honeyday Candles")
+            playRoute("Toys/Honeyday Candles", "Rose Field")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Honeyday Candles")
+            task.wait(3)
+            local platformm = workspace.Toys["Honeyday Candles"].Platform
             for i,v in pairs(workspace.Collectibles:GetChildren()) do
                 if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
                     api.humanoidrootpart().CFrame = v.CFrame
@@ -1693,7 +1705,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         kocmoc = HttpService:JSONDecode(readfile("kocmoc/BSS_"..configname..".json"))
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
-        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "honeystorm",
+        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
             "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
