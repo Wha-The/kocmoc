@@ -14,6 +14,15 @@ local token_priority = {
 
     "PollenBomb", "Surprise Party", "Blue Balloon", "Pollen Haze", "Summon Frog"
 }
+local ignore_dist = {
+    "GingerbreadBear", "Snowflake",
+    "Ticket", "Turpentine", "StarTreat", "AtomicTreat", "Diamond", "Gold", "Silver",
+
+    "Neonberry", "SoftWax", "HardWax", "CausticWax", "SwirledWax", "MagicBean",
+    "Glue", "Glitter", "BlueExtract", "RedExtract", "Enzymes", "Oil",
+
+    "Blueberry", "Strawberry", "Pineapple", "SunflowerSeed", "MoonCharm", "Gumdrops",
+}
 local maxmagnitude = 70
 local function IsToken(token)
     if not token or not token.Parent then
@@ -73,6 +82,9 @@ end
 local function go_after_token(v3, r)
     if not v3 then return end
     if not game.Players.LocalPlayer.Character.PrimaryPart then return end
+    if ignore_dist[identifyToken[r]] then
+        return farm(r)
+    end
     if (r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= maxmagnitude/1.4 and (v3-r.Position).Magnitude <= maxmagnitude then
         farm(r)
     end
