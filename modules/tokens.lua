@@ -82,7 +82,7 @@ end
 local function go_after_token(v3, r)
     if not v3 then return end
     if not game.Players.LocalPlayer.Character.PrimaryPart then return end
-    if ignore_dist[identifyToken[r]] then
+    if ignore_dist[identifyToken(r)] then
         return farm(r)
     end
     if (r.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= maxmagnitude/1.4 and (v3-r.Position).Magnitude <= maxmagnitude then
