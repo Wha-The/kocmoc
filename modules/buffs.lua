@@ -52,7 +52,7 @@ local function compile_buff_list()
     for _, nectar in pairs({{"Comforting Nectar", "comforting"}, {"Motivating Nectar", "motivating"}, {"Satisfying Nectar", "satisfying"}, {"Refreshing Nectar", "refreshing"}, {"Invigorating Nectar", "invigorating"}}) do
         buffs[nectar[2]] = math.round(get_buff_percentage(nectar[1]) * 100)
     end
-    buffs["tideblessing"] = round_decimal(1 + get_buff_percentage("Tide Blessing") * 0.15, 2)
+    buffs["tideblessing"] = round_decimal(1 + get_buff_percentage("Tide Blessing") * 0.2, 2)
     buffs["bloat"] = round_decimal(get_buff_percentage("Bubble Bloat") * 6, 2)
     
     Pipes.toAHK({
