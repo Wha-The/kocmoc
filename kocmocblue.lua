@@ -1386,14 +1386,12 @@ task.spawn(function()
             addToQueue("vicious_kill", function()
                 if not temptable.detected.vicious then return end
                 temptable.started.vicious = true
-                local autoFarmStatus = kocmoc.toggles.autofarm
-                disableall()
                 
                 local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
                 for i, v in pairs(workspace.Particles:GetChildren()) do
                     for x in string.gmatch(v.Name, "Vicious") do
                         if string.find(v.Name, "Vicious") then
-                            if kocmoc.toggles.legit and autoFarmStatus then
+                            if kocmoc.toggles.legit and kocmoc.toggles.autofarm then
                                 routeToField(find_field(v.Position))
                             end
                             game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
