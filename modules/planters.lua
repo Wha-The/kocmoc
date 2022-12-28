@@ -29,7 +29,7 @@ local PlanterRecommendedFields = {
     },
     ["Invigorating Nectar"] = {
         Pots = {"Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
-        Fields = {"Pepper Patch", "Spider Field", "Mountain Top Field", "Cactus Field", "Clover Field"},
+        Fields = {"Pepper Patch", "Mountain Top Field", "Cactus Field", "Clover Field"},
     }
 }
 
@@ -114,10 +114,10 @@ local function place_new_planters()
     -- compute the Nectar the player needs
     local nectars_needed = {}
     for index, nectar in pairs(NectarPriority) do
-        if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked on
+        if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked
 
         local percent = get_buff_percentage(nectar)
-        local recommended_hover_above = index <= 3 and 0.8 or 0.6
+        local recommended_hover_above = index <= 3 and 0.85 or 0.6
         if table.find(nectars_already_working_on, nectar) and percent > (recommended_hover_above/1.5) then continue end
         if percent < recommended_hover_above then
             table.insert(nectars_needed, nectar)
@@ -127,7 +127,7 @@ local function place_new_planters()
     if #nectars_needed <= 0 then
         local nectars = {}
         for _, nectar in pairs(NectarPriority) do
-            if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked on
+            if not kocmoc.planters.farmnectars[nectar] then continue end -- skip ones that aren't marked
             table.insert(nectars, {get_buff_percentage(nectar), nectar})
         end
         table.sort(nectars, function(a, b) return a[1] < b[1] end)
@@ -242,7 +242,7 @@ local function collectplanters(force_harvest)
                 end
                 if nectar then
                     -- predict how much nectar harvasting the planter now would give us
-                    local recommended_hover_above = table.find(NectarPriority, nectar) <= 3 and 0.8 or 0.5
+                    local recommended_hover_above = table.find(NectarPriority, nectar) <= 3 and 0.85 or 0.6
                     local nectar_given = v.GrowthPercent * GetPlanterData(v.Type).MaxGrowth * 1.1 -- *1.1 because it's the average and a good assumption.
                     if (get_buff_percentage(nectar) * (24 * 60 * 60) + nectar_given) > ((24 * 60 * 60) * (recommended_hover_above + 0.15)) then
                         should_harvest = true
