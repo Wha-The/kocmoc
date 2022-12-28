@@ -573,7 +573,7 @@ local attempt_snowbear = function()
                     }
                     local compute_destination
                     compute_destination = function()
-                        if not snowbear.Parent then return game.Players.LocalPlaywr.Character.PrimaryPart.Position end
+                        if not snowbear.Parent then return game.Players.LocalPlayer.Character.PrimaryPart.Position end
                         local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
                         local offset = offsets[1 + cycle % 4]
                         local dest = snowbear.PrimaryPart.Position + offset * 30
