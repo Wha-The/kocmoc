@@ -52,10 +52,10 @@ local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipe
 local count_stray_balloons, gethiveballoon, get_hive_balloon_size                               = import("balloons.lua")
 local find_field                                                                                = import("find_field.lua")
 local playRoute, routeToField                                                                   = import("routes.lua")
-local compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets = import("planters.lua")
+local compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets  = import("planters.lua")
 local Pipes                                                                                     = import("Pipes.lua")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
-local farm, gettoken                                                                            = import("tokens.lua")
+local farm, gettoken, identifyToken                                                             = import("tokens.lua")
 
 -- test filesystem proxy {
     if not proxyfileexists("kocmoc") then
@@ -235,6 +235,7 @@ kocmoc = {
         autosnowmachine = false,
         autoonettart = false,
         autocandles = false,
+        autosnowbear = false,
         autofeast = false,
         autoplanters = false,
         autokillmobs = false,
@@ -536,6 +537,90 @@ local function farmant()
     equip_mask(temptable.oldmask)
     temptable.started.ant = false
     antpart.CanCollide = false
+end
+
+local attempt_snowbear = function()
+    temptable.oldmask = get_latest_player_stats()["SessionAccessories"]["Hat"]
+    equip_mask("Demon Mask")
+    -- attempt to find snowbear
+
+    local callback = function()
+        local snowbear
+        for _, monster in pairs(get_my_monsters()) do
+            if string.find(monster.Name, "Snowbear") then
+                snowbear = monster
+                break
+            end
+        end
+        if not snowbear then
+            return warn("Can't find snowbear!")
+        end
+
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
+        raycastParams.FilterDescendantsInstances = {workspace.Gates, workspace["Invisible Walls"], workspace.Map, snowbear}
+        local running = true
+        local mode = "avoid"
+        local cycle = 1
+        task.spawn(function()
+            while running do
+                if mode == "avoid" then
+                    local offsets = {
+                        Vector3.new(1, 0, 0),
+                        Vector3.new(1, 0, 1),
+                        Vector3.new(-1, 0, 1),
+                        Vector3.new(-1, 0, -1),
+                    }
+                    local compute_destination = function()
+                        local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
+                        local offset = offsets[1 + cycle % 4]
+                        local dest = snowbear.PrimaryPart.Position + offset * 30
+                        local raycast = workspace:Raycast(ppp, CFrame.new(ppp, dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0)).LookVector * 20, raycastParams)
+                        if raycast then
+                            if raycast.Instance:IsDescendantOf(snowbear) then
+                                -- uh oh! this position is blocked by snow bear. running to this destination will hurt us. Try a different position.
+                                cycle += 1
+                                task.wait() -- prevent crashing
+                                return compute_destination()
+                            end
+                            dest = raycast.Position -- the position is blocked by a fence or something. Just walk there.
+                        end
+                        return dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0)
+                    end
+                    repeat
+                        task.wait()
+                        if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+                            game.Players.LocalPlayer.Character.Humanoid:MoveTo(compute_destination())
+                        end
+                        while get_buff_combo("Frozen") ~= nil do task.wait() end
+                    until (game.Players.LocalPlayer.Character.PrimaryPart.Position - compute_destination()).Magnitude < 2 or not running or mode ~= "avoid"
+                    cycle += 1
+                end
+                task.wait()
+            end
+        end) -- worker
+        local primary = snowbear.PrimaryPart
+        while running do
+            for _, token in pairs(workspace.Collectibles:GetChildren()) do
+                if find_field(token.Position) == "Spider Field" and table.find({"Snowflake", "Token Link", "Mind Hack"}, identifyToken(token)) and ((token.Position - snowbear.PrimaryPart.Position) * Vector3.new(1, 0, 1)).Magnitude > 15 then
+                    mode = "token"
+                    farm(token)
+                    mode = "avoid"
+                end
+            end
+            if not snowbear.Parent then
+                break
+            end
+            task.wait()
+        end -- status updater
+        running = false
+        for i=1, 5 do gettoken(primary.Position) end
+    end
+
+    callback()
+
+    task.wait(1)
+    equip_mask(temptable.oldmask)
 end
 
 local function converthoney()
@@ -860,6 +945,7 @@ _buttons["autosnowmachine"] = farmt:CreateToggle("Auto Snow Machine", nil, funct
 _buttons["autostockings"] = farmt:CreateToggle("Auto Stockings", nil, function(State) kocmoc.toggles.autostockings = State end)
 _buttons["autoplanters"] = farmt:CreateToggle("Auto Planters ⚙", nil, function(State) kocmoc.toggles.autoplanters = State end):AddToolTip("Will re-plant your planters after converting, if they hit 100%")
 _buttons["autocandles"] = farmt:CreateToggle("Auto Honey Candles", nil, function(State) kocmoc.toggles.autocandles = State end)
+_buttons["autosnowbear"] = farmt:CreateToggle("Auto Snow Bear", nil, function(State) kocmoc.toggles.autosnowbear = State end):AddToolTip("This will only work if you have Legit Mode on!")
 _buttons["autofeast"] = farmt:CreateToggle("Auto Beesmas Feast", nil, function(State) kocmoc.toggles.autofeast = State end)
 _buttons["autoonettart"] = farmt:CreateToggle("Auto Onett's Lid Art", nil, function(State) kocmoc.toggles.autoonettart = State end)
 _buttons["freeantpass"] = farmt:CreateToggle("Auto Free Antpasses", nil, function(State) kocmoc.toggles.freeantpass = State end)
@@ -1439,16 +1525,6 @@ task.spawn(function() while task.wait(2) do
                 end
             end
         end
-        if kocmoc.toggles.autoonettart and workspace.Toys:FindFirstChild("Onett's Lid Art") and canToyBeUsed("Onett's Lid Art") then
-            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Onett's Lid Art")
-            platformm = workspace.Toys["Onett's Lid Art"].Platform
-            for i,v in pairs(workspace.Collectibles:GetChildren()) do
-                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
-                    api.humanoidrootpart().CFrame = v.CFrame
-                    task.wait(.5)
-                end
-            end
-        end
     end
 end end)
 
@@ -1498,9 +1574,13 @@ task.spawn(function() while task.wait(1) do
             routeToField("Clover Field")
             playRoute("Clover Field", "Toys/Wealth Clock")
             task.wait(1)
-            playRoute("Toys/Wealth Clock", "Toys/Stockings")
-            task.wait(1)
-            playRoute("Toys/Stockings", "Clover Field")
+            if workspace.Toys:FindFirstChild("Stockings") and canToyBeUsed("Stockings") then
+                playRoute("Toys/Wealth Clock", "Toys/Stockings")
+                task.wait(1)
+                playRoute("Toys/Stockings", "Clover Field")
+            else
+                playRoute("Toys/Wealth Clock", "Clover Field")
+            end
         end) then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Wealth Clock")
 
@@ -1572,6 +1652,34 @@ task.spawn(function() while task.wait(1) do
     end
     if kocmoc.toggles.autosnowmachine and workspace.Toys:FindFirstChild("Snow Machine") and canToyBeUsed("Snow Machine") then
         game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Snow Machine")
+    end
+    if kocmoc.toggles.autosnowbear and workspace.Toys:FindFirstChild("Snowbear") and canToyBeUsed("Snowbear") then
+        addToQueue("snowbear", function() 
+            routeToField("Spider Field")
+            playRoute("Spider Field", "Toys/Snowbear")
+            playRoute("Toys/Snowbear", "Spider Field")
+            if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == "Spider Field" then
+                attempt_snowbear()
+            end
+        end)
+    end
+
+    if kocmoc.toggles.autoonettart and workspace.Toys:FindFirstChild("Onett's Lid Art") and canToyBeUsed("Onett's Lid Art") then
+        if not addToQueue("onettlidart", function() 
+            routeToField("Mountain Top Field")
+            playRoute("Mountain Top Field", "Toys/Onett Lid Art")
+            playRoute("Toys/Onett Lid Art", "Mountain Top Field")
+        end) then
+            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Onett's Lid Art")
+            task.wait(5)
+            local platformm = workspace.Toys["Onett's Lid Art"].Platform
+            for i,v in pairs(workspace.Collectibles:GetChildren()) do
+                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
+                    api.humanoidrootpart().CFrame = v.CFrame
+                    task.wait(.5)
+                end
+            end
+        end
     end
 
     if kocmoc.toggles.freeantpass and canToyBeUsed("Free Ant Pass Dispenser") and stats.Eggs.AntPass < 10 then 
@@ -1705,7 +1813,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         kocmoc = HttpService:JSONDecode(readfile("kocmoc/BSS_"..configname..".json"))
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
-        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
+        "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autosnowbear", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
             "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
