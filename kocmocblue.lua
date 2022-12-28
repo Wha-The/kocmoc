@@ -573,7 +573,7 @@ local attempt_snowbear = function()
                     }
                     local compute_destination
                     compute_destination = function()
-                        if not snowbear.Parent then return game.Players.LocalPlayer.Character.PrimaryPart.Position end
+                        if not snowbear.Parent then return game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart").Position end
                         local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
                         local offset = offsets[1 + cycle % 4]
                         local dest = snowbear.PrimaryPart.Position + offset * 30
@@ -595,7 +595,7 @@ local attempt_snowbear = function()
                             game.Players.LocalPlayer.Character.Humanoid:MoveTo(compute_destination())
                         end
                         while get_buff_combo("Frozen") do task.wait() end
-                    until (game.Players.LocalPlayer.Character.PrimaryPart.Position - compute_destination()).Magnitude < 2 or not running or mode ~= "avoid"
+                    until (game.Players.LocalPlayer.Character.PrimaryPart.Position - compute_destination()).Magnitude < 4 or not running or mode ~= "avoid"
                     cycle += 1
                 end
                 task.wait()
@@ -604,7 +604,8 @@ local attempt_snowbear = function()
         local primary = snowbear.PrimaryPart
         while running do
             for _, token in pairs(workspace.Collectibles:GetChildren()) do
-                if find_field(token.Position) == "Spider Field" and table.find({"Snowflake", "Token Link", "Mind Hack"}, identifyToken(token)) and ((token.Position - snowbear.PrimaryPart.Position) * Vector3.new(1, 0, 1)).Magnitude > 15 then
+                local tokenType = identifyToken(token)
+                if find_field(token.Position) == "Spider Field" and tokenType and table.find({"Snowflake", "Token Link", "Mind Hack"}, tokenType) and ((token.Position - snowbear.PrimaryPart.Position) * Vector3.new(1, 0, 1)).Magnitude > 15 then
                     mode = "token"
                     farm(token)
                     mode = "avoid"
