@@ -571,7 +571,9 @@ local attempt_snowbear = function()
                         Vector3.new(-1, 0, 1),
                         Vector3.new(-1, 0, -1),
                     }
-                    local compute_destination = function()
+                    local compute_destination
+                    compute_destination = function()
+                        if not snowbear.Parent then return game.Players.LocalPlaywr.Character.PrimaryPart.Position end
                         local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
                         local offset = offsets[1 + cycle % 4]
                         local dest = snowbear.PrimaryPart.Position + offset * 30
@@ -592,7 +594,7 @@ local attempt_snowbear = function()
                         if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
                             game.Players.LocalPlayer.Character.Humanoid:MoveTo(compute_destination())
                         end
-                        while get_buff_combo("Frozen") ~= nil do task.wait() end
+                        while get_buff_combo("Frozen") do task.wait() end
                     until (game.Players.LocalPlayer.Character.PrimaryPart.Position - compute_destination()).Magnitude < 2 or not running or mode ~= "avoid"
                     cycle += 1
                 end
