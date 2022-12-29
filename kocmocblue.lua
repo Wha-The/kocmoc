@@ -1000,6 +1000,14 @@ misco:CreateDropdown("Equip Collectors", collectorstable, function(Option) local
 misco:CreateDropdown("Generate Amulet", {"Supreme Star Amulet", "Diamond Star Amulet", "Gold Star Amulet","Silver Star Amulet","Bronze Star Amulet","Moon Amulet"}, function(Option) local A_1 = Option.." Generator" local Event = game:GetService("ReplicatedStorage").Events.ToyEvent Event:FireServer(A_1) end)
 misco:CreateButton("Export Stats Table", function() local StatCache = require(game.ReplicatedStorage.ClientStatCache)writefile("Stats_"..api.nickname..".json", StatCache:Encode()) end)
 misco:CreateButton("Do Ant Challenge", function() farmant() end)
+misco:CreateButton("Activate 10m buffs", function()
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Red Extract"})
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Blue Extract"})
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glue"})
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Oil"})
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Enzymes"})
+    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Tropical Drink"})
+end)
 misco:CreateButton("Collect & Replant All Planters", function() collectplanters(1); place_new_planters() end)
 
 local extras = extrtab:CreateSection("Extras")
@@ -1398,6 +1406,7 @@ task.spawn(function()
                                 routeToField(find_field(v.Position))
                             end
                             game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                            task.wait(4)
                             if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
                                 api.tween(1, CFrame.new(v.Position)) task.wait(1)
                                 api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
@@ -1414,17 +1423,59 @@ task.spawn(function()
                         end
                     end
                 end
+                local viciousbee
                 for i, v in pairs(workspace.Particles:GetChildren()) do
-                    for x in string.gmatch(v.Name, "Vicious") do
-                        while kocmoc.toggles.killvicious and temptable.detected.vicious do
-                            task.wait()
-                            if string.find(v.Name, "Vicious") then
-                                for i=1, 4 do
-                                    temptable.float = true
-                                    vichumanoid.CFrame = CFrame.new(v.Position.x, v.Position.y + 3, v.Position.z)
-                                    task.wait(.3)
-                                end
+                    if string.find(v.Name, "Vicious") then
+                        viciousbee = v
+                        break
+                    end
+                end
+                if kocmoc.toggles.legit then
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
+                    raycastParams.FilterDescendantsInstances = {workspace.Gates, workspace["Invisible Walls"], workspace.Map, viciousbee}
+                    local cycle = 1
+                    while kocmoc.toggles.killvicious and temptable.detected.vicious do
+                        local offsets = {
+                            Vector3.new(1, 0, 0),
+                            Vector3.new(1, 0, 1),
+                            Vector3.new(-1, 0, 1),
+                            Vector3.new(-1, 0, -1),
+                        }
+                        local compute_destination
+                        compute_destination = function()
+                            if not viciousbee.Parent then return game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart").Position end
+                            local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
+                            local offset = offsets[1 + cycle % 4]
+                            local dest = viciousbee.Position + offset * 30
+                            local raycast = workspace:Raycast(ppp, CFrame.new(ppp, dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0)).LookVector * 20, raycastParams)
+                            if raycast then
+                                dest = raycast.Position -- the position is blocked by a fence or something. Just walk there.
                             end
+                            local floor_raycast = workspace:Raycast(dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0) + Vector3.new(0, 1, 0), Vector3.new(0, -5, 0), raycastParams)
+                            -- CHECK IF THERE'S A FLOOR!!
+                            if not floor_raycast or not floor_raycast.Position then
+                                cycle += 1
+                                task.wait()
+                                return compute_destination()
+                            end
+                            return dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0)
+                        end
+                        repeat
+                            task.wait()
+                            if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+                                game.Players.LocalPlayer.Character.Humanoid:MoveTo(compute_destination())
+                            end
+                        until (game.Players.LocalPlayer.Character.PrimaryPart.Position - compute_destination()).Magnitude < 4 or not (kocmoc.toggles.killvicious and temptable.detected.vicious)
+                        cycle += 1
+                        task.wait()
+                    end
+                else
+                    while kocmoc.toggles.killvicious and temptable.detected.vicious do
+                        for i=1, 4 do
+                            temptable.float = true
+                            vichumanoid.CFrame = CFrame.new(viciousbee.Position.x, viciousbee.Position.y + 3, viciousbee.Position.z)
+                            task.wait(.3)
                         end
                     end
                 end
@@ -1433,7 +1484,6 @@ task.spawn(function()
                     Type = "increment_stat",
                     Stat = "Total Vic Kills",
                 })
-                temptable.float = false
                 temptable.started.vicious = false
                 enableall()
             end, {ignore_legit = true})
