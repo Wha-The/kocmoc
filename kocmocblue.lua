@@ -1570,21 +1570,6 @@ workspace.NPCBees.ChildRemoved:Connect(function(v)
     end
 end)
 
-task.spawn(function() while task.wait(2) do
-    if not temptable.converting then
-        if kocmoc.toggles.autostockings and workspace.Toys:FindFirstChild("Stockings") and canToyBeUsed("Stockings") then
-            game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Stockings")
-            platformm = workspace.Toys.Stockings.Platform
-            for i,v in pairs(workspace.Collectibles:GetChildren()) do
-                if (v.Position-platformm.Position).magnitude < 25 and v.CFrame.YVector.Y == 1 then
-                    api.humanoidrootpart().CFrame = v.CFrame
-                    task.wait(.5)
-                end
-            end
-        end
-    end
-end end)
-
 game:GetService("RunService").RenderStepped:Connect(function(step)
     temptable.runningfor += step
     ccccounter += step
@@ -1856,6 +1841,7 @@ game:GetService("Players").LocalPlayer.Idled:Connect(function() vu:Button2Down(V
 
 
 task.spawn(function() while task.wait() do
+    if not game.Players.LocalPlayer.Character.PrimaryPart then continue end
     local pos = game.Players.LocalPlayer.Character.PrimaryPart.Position
     task.wait()
     if (pos-game.Players.LocalPlayer.Character.PrimaryPart.Position).Magnitude > 0 then
