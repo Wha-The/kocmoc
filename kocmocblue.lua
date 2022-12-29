@@ -1447,7 +1447,7 @@ task.spawn(function()
                             if not viciousbee.Parent then return game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart").Position end
                             local ppp = game.Players.LocalPlayer.Character.PrimaryPart.Position
                             local offset = offsets[1 + cycle % 4]
-                            local dest = viciousbee.Position + offset * 30
+                            local dest = viciousbee.Position + offset * 15
                             local raycast = workspace:Raycast(ppp, CFrame.new(ppp, dest * Vector3.new(1, 0, 1) + ppp * Vector3.new(0, 1, 0)).LookVector * 20, raycastParams)
                             if raycast then
                                 dest = raycast.Position -- the position is blocked by a fence or something. Just walk there.
