@@ -1405,8 +1405,14 @@ task.spawn(function()
                             if kocmoc.toggles.legit and kocmoc.toggles.autofarm then
                                 routeToField(find_field(v.Position))
                             end
-                            game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
-                            task.wait(4)
+                            task.spawn(function()
+                                task.wait(5)
+                                timeout = true
+                            end)
+                            repeat
+                                task.wait()
+                                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                            until (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude < 3 or timeout
                             if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
                                 api.tween(1, CFrame.new(v.Position)) task.wait(1)
                                 api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
