@@ -818,7 +818,14 @@ end
 
 local function makequests()
     for i, v in pairs(workspace.NPCs:GetChildren()) do
-        if table.find(kocmoc.vars.npcprefer, v.Name) then if v:FindFirstChild("Platform") then if v.Platform:FindFirstChild("AlertPos") then if v.Platform.AlertPos:FindFirstChild("AlertGui") then if v.Platform.AlertPos.AlertGui:FindFirstChild("ImageLabel") then
+        local considered = false
+        for npc, _ in pairs(kocmoc.vars.npcprefer) do
+            if npc == v.Name then
+                considered = true
+                break
+            end
+        end
+        if considered then if v:FindFirstChild("Platform") then if v.Platform:FindFirstChild("AlertPos") then if v.Platform.AlertPos:FindFirstChild("AlertGui") then if v.Platform.AlertPos.AlertGui:FindFirstChild("ImageLabel") then
             local image = v.Platform.AlertPos.AlertGui.ImageLabel
             local button = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.ActivateButton.MouseButton1Click
             if image.ImageTransparency == 0 then
