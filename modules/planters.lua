@@ -12,11 +12,11 @@ local HttpService = game:GetService("HttpService")
 
 local PlanterRecommendedFields = {
     ["Comforting Nectar"] = {
-        Pots = {"Blue Clay Planter"},
+        Pots = {"Hydroponic Planter", "Blue Clay Planter", "Plastic Planter"},
         Fields = {"Pine Tree Forest", "Bamboo Field"},
     },
     ["Refreshing Nectar"] = {
-        Pots = {"Pesticide Planter", "Tacky Planter", "Plastic Planter"},
+        Pots = {"Pesticide Planter", "Hydroponic Planter", "Plastic Planter"},
         Fields = {"Strawberry Field", "Blue Flower Field", "Coconut Field"},
     },
     ["Satisfying Nectar"] = {
@@ -28,12 +28,20 @@ local PlanterRecommendedFields = {
         Fields = {"Stump Field", "Rose Field", "Spider Field", "Mushroom Field"},
     },
     ["Invigorating Nectar"] = {
-        Pots = {"Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
+        Pots = {"Heat-Treated Planter", "Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
         Fields = {"Pepper Patch", "Mountain Top Field", "Cactus Field", "Clover Field"},
     }
 }
 
-local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar", "Refreshing Nectar", "Satisfying Nectar"}
+local ColoredPlanters = {
+    ["Heat-Treated Planter"] = "Red",
+    ["Red Clay Planter"] = "Red",
+    ["Hydroponic Planter"] = "Blue",
+    ["Blue Clay Planter"] = "Blue",
+}
+
+local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar", "Refreshing Nectar", "Satisfying Nectar"} -- The order must be preserved. `nectarprioritypresets` uses this order.
+
 local nectarprioritypresets = {
     Blue = {1, 3, 5, 4, 2},
     Red = {2, 4, 5, 3, 1},
@@ -42,7 +50,7 @@ local nectarprioritypresets = {
 
 local GetPlanterData = require(game.ReplicatedStorage.PlanterTypes).Get
 
-function compile_planters()
+local function compile_planters()
     local planters = {}
     local nectar -- find the nectar which the field where the planter on is for
 
@@ -118,9 +126,10 @@ local function place_new_planters()
 
         local percent = get_buff_percentage(nectar)
         local recommended_hover_above = index <= 3 and 0.85 or 0.6
-        if table.find(nectars_already_working_on, nectar) and percent > (recommended_hover_above/1.5) then continue end
+        if table.find(nectars_already_working_on, nectar) then continue end
         if percent < recommended_hover_above then
             table.insert(nectars_needed, nectar)
+            table.insert(nectars_already_working_on, nectar)
         end
     end
     -- if no nectar is <80%, populate "nectars_needed" with all nectars arranged from lowest to highest 
@@ -150,19 +159,6 @@ local function place_new_planters()
     local planted = 0
     for _, nectar in pairs(nectars_needed) do
         if total >= 3 then break end
-        local pot do
-            for _, _p in pairs(PlanterRecommendedFields[nectar].Pots) do
-                pot = _p
-                if not table.find(planters_in_use, _p) then
-                    break
-                end
-            end
-            if not pot then
-                pot = "Paper Planter"
-            else
-                table.insert(planters_in_use, pot)
-            end
-        end
 
         local field do
             local available_fields = {}
@@ -210,6 +206,38 @@ local function place_new_planters()
                 table.insert(occupied_fields, field)
             end
         end
+
+        local pot do
+            for _, _p in pairs(PlanterRecommendedFields[nectar].Pots) do
+                pot = _p
+
+                -- if the pot is colored, check if the field matches that color. If it doesn't, use a different pot.
+                if ColoredPlanters[pot] then
+                    if workspace.FlowerZones:FindFirstChild(field) and workspace.FlowerZones[field]:FindFirstChild("ColorGroup") then
+                        if workspace.FlowerZones[field]["ColorGroup"].Value ~= ColoredPlanters[pot] then
+                            continue
+                        end
+                    end
+                end
+
+                -- check if the player owns this pot
+                local potId = string.gsub(pot, " ", "")
+                if statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
+                    continue
+                end
+                if not table.find(planters_in_use, pot) then
+                    break
+                end
+                
+            end
+            if not pot then
+                pot = "Paper Planter"
+            else
+                table.insert(planters_in_use, pot)
+            end
+        end
+
+        
         -- go to field and plant
         if kocmoc.toggles.legit then
             routeToField(field)
@@ -283,4 +311,4 @@ local function collectplanters(force_harvest)
     place_new_planters()
 end
 
-return compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets
+local return compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets
