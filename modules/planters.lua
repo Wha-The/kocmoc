@@ -24,7 +24,7 @@ local PlanterRecommendedFields = {
         Fields = {"Pumpkin Patch", "Sunflower Field", "Pineapple Patch"},
     },
     ["Motivating Nectar"] = {
-        Pots = {"Candy Planter", "Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
+        Pots = {"Heat-Treated Planter", "Candy Planter", "Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
         Fields = {"Stump Field", "Rose Field", "Spider Field", "Mushroom Field"},
     },
     ["Invigorating Nectar"] = {
