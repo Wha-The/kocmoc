@@ -311,4 +311,4 @@ local function collectplanters(force_harvest)
     place_new_planters()
 end
 
-local return compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets
+return compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets
