@@ -818,10 +818,11 @@ end
 
 local function makequests()
     for i, v in pairs(workspace.NPCs:GetChildren()) do
-        if v.Name ~= "Ant Challenge Info" and v.Name ~= "Bubble Bee Man 2" and v.Name ~= "Wind Shrine" and v.Name ~= "Gummy Bear" and v.Name ~= "Honey Bee" then if v:FindFirstChild("Platform") then if v.Platform:FindFirstChild("AlertPos") then if v.Platform.AlertPos:FindFirstChild("AlertGui") then if v.Platform.AlertPos.AlertGui:FindFirstChild("ImageLabel") then
+        if table.find(kocmoc.vars.npcprefer, v.Name) then if v:FindFirstChild("Platform") then if v.Platform:FindFirstChild("AlertPos") then if v.Platform.AlertPos:FindFirstChild("AlertGui") then if v.Platform.AlertPos.AlertGui:FindFirstChild("ImageLabel") then
             local image = v.Platform.AlertPos.AlertGui.ImageLabel
             local button = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.ActivateButton.MouseButton1Click
             if image.ImageTransparency == 0 then
+
                 addToQueue("claim_quest:"..v.Name, function()
                     local hasRoute = table.find({"Black Bear", "Bucko Bee", "Polar Bear", "Brown Bear", "Riley Bee"}, v.Name)
                     if kocmoc.toggles.legit and hasRoute then
