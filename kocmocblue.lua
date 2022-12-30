@@ -1,5 +1,5 @@
 shared.autoload = "afk"
-shared.ad_removal = false
+shared.no_filesystem = false
 
 ------------------------------------------------------------------------
 
