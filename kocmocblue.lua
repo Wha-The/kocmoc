@@ -725,7 +725,7 @@ local function hasboosttokenquest()
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
                 local npcconsidered = false
-                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                for npc, _ in pairs(kocmoc.vars.npcprefer) do
                     if string.match(v.Parent.Parent.TitleBar.Text, npc) then
                         npcconsidered = true
                         break
@@ -747,7 +747,7 @@ local function hasBoosterQuest()
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
                 local npcconsidered = false
-                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                for npc, _ in pairs(kocmoc.vars.npcprefer) do
                     if string.match(v.Parent.Parent.TitleBar.Text, npc) then
                         npcconsidered = true
                         break
@@ -769,7 +769,7 @@ local function hasFruitTokenQuest()
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
                 local npcconsidered = false
-                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                for npc, _ in pairs(kocmoc.vars.npcprefer) do
                     if string.match(v.Parent.Parent.TitleBar.Text, npc) then
                         npcconsidered = true
                         break
@@ -1234,7 +1234,7 @@ task.spawn(function() while task.wait() do
                     for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                         if v.Name == "Description" then
                             local npcconsidered = false
-                            for _, npc in pairs(kocmoc.vars.npcprefer) do
+                            for npc, _ in pairs(kocmoc.vars.npcprefer) do
                                 if string.match(v.Parent.Parent.TitleBar.Text, npc) then
                                     npcconsidered = true
                                     break
@@ -1411,7 +1411,7 @@ task.spawn(function() while task.wait() do
                         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                             if v.Name == "Description" then
                                 local npcconsidered = false
-                                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                                for npc, _ in pairs(kocmoc.vars.npcprefer) do
                                     if string.match(v.Parent.Parent.TitleBar.Text, npc) then
                                         npcconsidered = true
                                         break
