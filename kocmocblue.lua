@@ -1,22 +1,9 @@
 shared.autoload = "afk"
 shared.ad_removal = false
-shared.no_filesystem = false
 
 ------------------------------------------------------------------------
 
 repeat task.wait(0.1) until game:IsLoaded()
-
-if shared.ad_removal then -- REMOVE THE FUCKING ADS!!!!!!
-    local ads = {
-        workspace.Decorations.Misc:FindFirstChild("AdFrame"),
-        workspace:FindFirstChild("ForwardPortal"),
-    }
-    for _, ad in pairs(ads) do
-        if ad then
-            ad:Destroy()
-        end
-    end
-end
 
 if not shared.no_filesystem then
     -- check if the executor supports filesystem functions, if not, forcefully enable shared.no_filesystem
@@ -250,7 +237,13 @@ kocmoc = {
         prefer = "Tokens",
         walkspeed = 70,
         jumppower = 70,
-        npcprefer = "All Quests",
+        npcprefer = {
+            ["Bucko Bee"] = false,
+            ["Riley Bee"] = false,
+            ["Black Bear"] = false,
+            ["Brown Bear"] = false,
+            ["Polar Bear"] = false,
+        },
         farmtype = "Walk",
         monstertimer = 3
     },
@@ -284,7 +277,8 @@ local defaultkocmoc = kocmoc
 local fieldposition
 -- functions
 
-local function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
+-- Global on purpose
+function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
 
 local function getTimeSinceToyActivation(name)
     return workspace.OsTime.Value - require(game.ReplicatedStorage.ClientStatCache):Get("ToyTimes")[name]
@@ -602,6 +596,7 @@ local attempt_snowbear = function()
             end
         end) -- worker
         local primary = snowbear.PrimaryPart
+        local died = false
         while running do
             for _, token in pairs(workspace.Collectibles:GetChildren()) do
                 local tokenType = identifyToken(token)
@@ -614,10 +609,19 @@ local attempt_snowbear = function()
             if not snowbear.Parent then
                 break
             end
+            if not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") or game.Players.LocalPlayer.Character.Humanoid.Health <= 0 then
+                -- died, exit.
+                died = true
+                break
+            end
             task.wait()
         end -- status updater
         running = false
-        for i=1, 5 do gettoken(primary.Position) end
+        if not died then
+            for i=1, 5 do gettoken(primary.Position) end
+        else
+            task.wait(10)
+        end
     end
 
     callback()
@@ -720,8 +724,16 @@ local function hasboosttokenquest()
     if game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
-                if string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom") then
-                    if string.find(v.Text, "Red Boost") or string.find(v.Text, "Blue Boost") and not string.find(v.Text, "Complete!") then
+                local npcconsidered = false
+                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                    if string.match(v.Parent.Parent.TitleBar.Text, npc) then
+                        npcconsidered = true
+                        break
+                    end
+                end
+                if not npcconsidered then continue end
+                if not string.find(v.Text, "Puffshroom") then
+                    if (string.find(v.Text, "Red Boost") or string.find(v.Text, "Blue Boost")) and not string.find(v.Text, "Complete!") then
                         return true
                     end
                 end
@@ -734,7 +746,15 @@ local function hasBoosterQuest()
     if game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
-                if string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom") then
+                local npcconsidered = false
+                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                    if string.match(v.Parent.Parent.TitleBar.Text, npc) then
+                        npcconsidered = true
+                        break
+                    end
+                end
+                if not npcconsidered then continue end
+                if not string.find(v.Text, "Puffshroom") then
                     if string.find(v.Text, "Field Booster") and not string.find(v.Text, "Complete!") then
                         return true
                     end
@@ -748,7 +768,15 @@ local function hasFruitTokenQuest()
     if game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
             if v.Name == "Description" then
-                if string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom") then
+                local npcconsidered = false
+                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                    if string.match(v.Parent.Parent.TitleBar.Text, npc) then
+                        npcconsidered = true
+                        break
+                    end
+                end
+                if not npcconsidered then continue end
+                if not string.find(v.Text, "Puffshroom") then
                     if (string.find(v.Text, "Strawberry Tokens") or string.find(v.Text, "Blueberry Tokens")) and not string.find(v.Text, "Complete!") then
                         return true
                     end
@@ -1081,7 +1109,10 @@ fieldsettings:CreateButton("Add Field To Blacklist", function() table.insert(koc
 fieldsettings:CreateButton("Remove Field From Blacklist", function() table.remove(kocmoc.blacklistedfields, api.tablefind(kocmoc.blacklistedfields, temptable.blackfield)) game:GetService("CoreGui"):FindFirstChild(shared.windowname).Main:FindFirstChild("Blacklisted Fields D",true):Destroy() fieldsettings:CreateDropdown("Blacklisted Fields", kocmoc.blacklistedfields, function(Option) end) end)
 fieldsettings:CreateDropdown("Blacklisted Fields", kocmoc.blacklistedfields, function(Option) end)
 local aqs = setttab:CreateSection("Auto Quest Settings")
-aqs:CreateDropdown("Do NPC Quests", {'All Quests', 'Bucko Bee', 'Brown Bear', 'Riley Bee', 'Polar Bear'}, function(Option) kocmoc.vars.npcprefer = Option end)
+_buttons["npcprefer"] = {}
+for npc, _ in pairs(kocmoc.vars.npcprefer) do
+    _buttons["npcprefer"][npc] = aqs:CreateToggle(npc, nil, function(State) kocmoc.vars.npcprefer[npc] = State end)
+end
 _buttons["tptonpc"] = aqs:CreateToggle("Teleport To NPC", nil, function(State) kocmoc.toggles.tptonpc = State end)
 
 local aqs = setttab:CreateSection("Legit Mode")
@@ -1201,7 +1232,15 @@ task.spawn(function() while task.wait() do
                 if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
                     for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                         if v.Name == "Description" then
-                            if not string.match(v.Parent.Parent.TitleBar.Text, "Brown Bear") and (string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom")) then
+                            local npcconsidered = false
+                            for _, npc in pairs(kocmoc.vars.npcprefer) do
+                                if string.match(v.Parent.Parent.TitleBar.Text, npc) then
+                                    npcconsidered = true
+                                    break
+                                end
+                            end
+                            if not npcconsidered then continue end
+                            if not string.find(v.Text, "Puffshroom") then
                                 local pollentypes = {'White Pollen', "Red Pollen", "Blue Pollen", "Blue Flowers", "Red Flowers", "White Flowers"}
                                 local text = v.Text
                                 if api.returnvalue(fieldstable, text) and string.find(text, "Collect") and string.find(text, "Pollen from") and not string.find(text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
@@ -1370,7 +1409,15 @@ task.spawn(function() while task.wait() do
                     if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
                         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                             if v.Name == "Description" then
-                                if string.match(v.Parent.Parent.TitleBar.Text, kocmoc.vars.npcprefer) or kocmoc.vars.npcprefer == "All Quests" and not string.find(v.Text, "Puffshroom") then
+                                local npcconsidered = false
+                                for _, npc in pairs(kocmoc.vars.npcprefer) do
+                                    if string.match(v.Parent.Parent.TitleBar.Text, npc) then
+                                        npcconsidered = true
+                                        break
+                                    end
+                                end
+                                if not npcconsidered then continue end
+                                if not string.find(v.Text, "Puffshroom") then
                                     if string.find(v.Text, "Ant") and not string.find(v.Text, "Complete!") then
                                         farmant()
                                     end
@@ -1532,8 +1579,12 @@ end end)
 
 task.spawn(function() while task.wait(0.1) do
     if kocmoc.toggles.traincrab then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-259, 111.8, 496.4) * CFrame.fromEulerAnglesXYZ(0, 110, 90) temptable.float = true temptable.float = false end
-    if kocmoc.toggles.autodig then if game.Players.LocalPlayer then if game.Players.LocalPlayer.Character then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) then clickevent = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) or nil end end end if clickevent then clickevent:FireServer() end end end
 end end)
+task.spawn(function()
+    while task.wait(.3) do
+        if kocmoc.toggles.autodig then if game.Players.LocalPlayer then if game.Players.LocalPlayer.Character then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) then clickevent = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) or nil end end end if clickevent then clickevent:FireServer() end end end
+    end
+end)
 
 workspace.Particles.Folder2.ChildAdded:Connect(function(child)
     if child.Name == "Sprout" then
@@ -1804,12 +1855,12 @@ end end)
 game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
     humanoid = char:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
-        if kocmoc.toggles.autofarm then
-            temptable.dead = true
-            kocmoc.toggles.autofarm = false
-            temptable.converting = false
-            temptable.farmtoken = false
-        end
+        -- if kocmoc.toggles.autofarm then
+        --     temptable.dead = true
+        --     kocmoc.toggles.autofarm = false
+        --     temptable.converting = false
+        --     temptable.farmtoken = false
+        -- end
         if temptable.dead then
             task.wait(25)
             temptable.dead = false
@@ -1867,6 +1918,10 @@ load_config = function(configname) -- also doubles as a function to refresh all 
 
     for _, nectar in pairs(allnectars) do
         _buttons["planters"][nectar]:SetState(kocmoc.planters.farmnectars[nectar])
+    end
+
+    for npc, button in pairs(_buttons["npcprefer"]) do
+        button:SetState(kocmoc.vars.npcprefer[npc])
     end
 
     for _, slider in pairs({"convertat", "convertatballoon", "walkspeed", "jumppower"}) do
