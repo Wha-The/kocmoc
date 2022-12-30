@@ -222,7 +222,7 @@ local function place_new_planters()
 
                 -- check if the player owns this pot
                 local potId = string.gsub(pot, " ", "")
-                if statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
+                if statsget().Eggs[potId] and statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
                     continue
                 end
                 if not table.find(planters_in_use, pot) then
