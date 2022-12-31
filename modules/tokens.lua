@@ -44,8 +44,12 @@ local function IsToken(token)
 end
 local function farm(token)
     if token:GetAttribute("_token_collected") then return end
-    game.Players.LocalPlayer.Character.Humanoid:MoveTo(token.Position) 
-    repeat task.wait() until ((token.Position-game.Players.LocalPlayer.Character.PrimaryPart.Position) * Vector3.new(1, 0, 1)).magnitude <= 5 or not IsToken(token)
+    game.Players.LocalPlayer.Character.Humanoid:MoveTo(token.Position)
+    if token:IsDescendantOf(workspace.CurrentCamera.DupedTokens) then
+        repeat task.wait() until not IsToken(token)
+    else
+        repeat task.wait() until ((token.Position-game.Players.LocalPlayer.Character.PrimaryPart.Position) * Vector3.new(1, 0, 1)).magnitude <= 5 or not IsToken(token)
+    end
     token:SetAttribute("_token_collected", true)
 end
 
