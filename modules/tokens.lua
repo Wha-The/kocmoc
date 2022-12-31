@@ -45,7 +45,7 @@ end
 local function farm(token)
     if token:GetAttribute("_token_collected") then return end
     game.Players.LocalPlayer.Character.Humanoid:MoveTo(token.Position) 
-    repeat task.wait() until (token.Position-game.Players.LocalPlayer.Character.PrimaryPart.Position).magnitude <= 3 or not IsToken(token)
+    repeat task.wait() until ((token.Position-game.Players.LocalPlayer.Character.PrimaryPart.Position) * Vector3.new(1, 0, 1)).magnitude <= 5 or not IsToken(token)
     token:SetAttribute("_token_collected", true)
 end
 
@@ -75,7 +75,9 @@ end
 
 local function identifyToken(token)
     -- returns "Blueberry", "Token Link"
-    local icon = token:WaitForChild("FrontDecal").Texture
+    local dec = token:WaitForChild("FrontDecal", 2)
+    if not dec then return end
+    local icon = dec.Texture
     return token_index[icon]
 end
 
@@ -131,4 +133,4 @@ local function gettoken(v3)
         end
     end
 end
-return farm, gettoken
+return farm, gettoken, identifyToken
