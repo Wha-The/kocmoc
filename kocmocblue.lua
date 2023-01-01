@@ -182,6 +182,7 @@ kocmoc = {
     blacklistedfields = {},
     bltokens = {},
     toggles = {
+        boosting = {},
         autofarm = false,
         farmbubbles = false,
         autodig = false,
@@ -1123,6 +1124,14 @@ for npc, _ in pairs(kocmoc.vars.npcprefer) do
 end
 _buttons["tptonpc"] = aqs:CreateToggle("Teleport To NPC", nil, function(State) kocmoc.toggles.tptonpc = State end)
 
+_buttons["boosting"] = {}
+local aqs = setttab:CreateSection("Auto-Boosting")
+_buttons["boosting"]["lockfield"] = aqs:CreateToggle("Lock Field", nil, function(State) kocmoc.toggles.boosting.lockfield = State end):AddToolTip("Will not perform any other activity while boosting. Only collecting & converting")
+_buttons["boosting"]["glitterrefresh"] = aqs:CreateToggle("Use Glitter to Refresh", nil, function(State) kocmoc.toggles.boosting.glitterefresh = State end):AddToolTip("Will attempt to use glitter to refresh your boost just before it ends")
+_buttons["boosting"]["jellybeans"] = aqs:CreateToggle("Use Jellybeans", nil, function(State) kocmoc.toggles.boosting.jellybeans = State end):AddToolTip("Only uses jellybeans if you have more than 85")
+_buttons["boosting"]["increaseballooncap"] = aqs:CreateToggle("Multiply Balloon Cap", nil, function(State) kocmoc.toggles.boosting.increaseballooncap = State end):AddToolTip("Multiplies \"Convert Balloon At\" by the level of your fiend boost")
+
+
 local aqs = setttab:CreateSection("Legit Mode")
 _buttons["legit"] = aqs:CreateToggle("Legit Mode", nil, function(State) kocmoc.toggles.legit = State end)
 
@@ -1154,7 +1163,9 @@ end)
 local cccinterval = 5*60
 local ccccounter = tick() - cccinterval
 local doBPChecks = function()
-    if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
+    if kocmoc.toggles.boosting.lockfield then
+        if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
+    end
     if kocmoc.toggles.autoquest then makequests() end
     if kocmoc.toggles.autoplanters then collectplanters() end
 
@@ -1200,16 +1211,22 @@ task.spawn(function() while task.wait() do
                     pollenpercentage = game.Players.LocalPlayer.CoreStats.Pollen.Value/maxpollen*100
                 end
 
-                if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
-                    local stats = statsget()
-                    if ((workspace.OsTime.Value - stats.PlayerActiveTimes["Jelly Beans"]) > 2*60) and (stats.Eggs.JellyBeans > 85) then
-                        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Jelly Beans"})
+                if kocmoc.toggles.boosting.jellybeans then
+                    if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                        local stats = statsget()
+                        if ((workspace.OsTime.Value - stats.PlayerActiveTimes["Jelly Beans"]) > 2*60) and (stats.Eggs.JellyBeans > 85) then
+                            game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Jelly Beans"})
+                        end
                     end
                 end
             end
 
             local s = get_hive_balloon_size()
-            if s and s > (kocmoc.vars.convertatballoon * (1 + (get_buff_combo(kocmoc.vars.field.." Boost") or 0))) then
+            local cap = kocmoc.vars.convertatballoon
+            if kocmoc.toggles.boosting.increaseballooncap then
+                cap *= (1 + (get_buff_combo(kocmoc.vars.field.." Boost") or 0))
+            end
+            if s and s > cap then
                 pollenpercentage = 100
             end
         
@@ -1324,12 +1341,14 @@ task.spawn(function() while task.wait() do
                 statsget()["SessionAccessories"]["Hat"] = mask
             end
 
-            if get_buff_combo(kocmoc.vars.field.." Boost") then
-                -- attempt to glitter field if timer < 1 min
-                if get_buff_active_duration(kocmoc.vars.field.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
-                    local stats = statsget()
-                    if ((workspace.OsTime.Value - stats["PlayerActiveTimes"]["Glitter"]) > 15.5*60) and (stats.Eggs.Glitter > 0) then
-                        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glitter"})
+            if kocmoc.toggles.boosting.glitterrefresh then
+                if get_buff_combo(kocmoc.vars.field.." Boost") then
+                    -- attempt to glitter field if timer < 1.5 min
+                    if get_buff_active_duration(kocmoc.vars.field.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                        local stats = statsget()
+                        if ((workspace.OsTime.Value - stats["PlayerActiveTimes"]["Glitter"]) > 15.5*60) and (stats.Eggs.Glitter > 0) then
+                            game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glitter"})
+                        end
                     end
                 end
             end
@@ -1347,7 +1366,6 @@ task.spawn(function() while task.wait() do
                         while kocmoc.toggles.killmondo and workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") and not temptable.started.vicious and not temptable.started.monsters do
                             temptable.started.mondo = true
                             while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
-                                disableall()
                                 workspace.Map.Ground.HighBlock.CanCollide = false 
                                 mondopition = workspace.Monsters["Mondo Chick (Lvl 8)"].Head.Position
                                 api.tween(1, CFrame.new(mondopition.x, mondopition.Y - 52, mondopition.z))
@@ -1358,7 +1376,6 @@ task.spawn(function() while task.wait() do
                             for i = 0, 50 do 
                                 gettoken(CFrame.new(73.2, 176.35, -167).Position) 
                             end 
-                            enableall() 
                             api.tween(2, fieldpos) 
                             temptable.started.mondo = false
                         end
@@ -1662,10 +1679,7 @@ task.spawn(function() while task.wait(1) do
         if kocmoc.dispensesettings.coconut and canToyBeUsed("Coconut Dispenser") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Coconut Dispenser") end
         if kocmoc.dispensesettings.glue and canToyBeUsed("Glue Dispenser") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Glue Dispenser") end
     end
-    if kocmoc.toggles.autofarm and canToyBeUsed("Blue Field Booster") then
-        game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster")
-    end
-    if kocmoc.toggles.autoboosters and hasBoosterQuest() then 
+    if kocmoc.toggles.autofarm and kocmoc.toggles.autoboosters then 
         if kocmoc.dispensesettings.white and canToyBeUsed("Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Field Booster") end
         if kocmoc.dispensesettings.red and canToyBeUsed("Red Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Red Field Booster") end
         if kocmoc.dispensesettings.blue and canToyBeUsed("Blue Field Booster") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Blue Field Booster") end
@@ -1930,6 +1944,10 @@ load_config = function(configname) -- also doubles as a function to refresh all 
 
     for npc, button in pairs(_buttons["npcprefer"]) do
         button:SetState(kocmoc.vars.npcprefer[npc])
+    end
+
+    for _, toggle in pairs({"glitterrefresh", "jellybeans", "increaseballooncap", "lockfield"}) do
+        _buttons["boosting"][toggle]:SetState(kocmoc.toggles.boosting[toggle])
     end
 
     for _, slider in pairs({"convertat", "convertatballoon", "walkspeed", "jumppower"}) do
