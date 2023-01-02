@@ -83,10 +83,6 @@ local temptable = {
     honeycurrent = statstable.Totals.Honey,
     dead = false,
     float = false,
-    alpha = false,
-    beta = false,
-    myhiveis = false,
-    invis = false,
     windy = nil,
     sprouts = {
         detected = false,
@@ -98,7 +94,6 @@ local temptable = {
         vicious = false,
         windy = false
     },
-    allplanters = {},
     planters = {
         planter = {},
         cframe = {},
@@ -116,7 +111,7 @@ local temptable = {
     runningfor = 0,
     oldtool = statstable["EquippedCollector"],
     ['gacf'] = function(part, offset)
-        coordd = CFrame.new(part.Position.X, part.Position.Y+offset, part.Position.Z)
+        local coordd = CFrame.new(part.Position.X, part.Position.Y+offset, part.Position.Z)
         return coordd
     end
 }
@@ -137,13 +132,11 @@ local spawnerstable = {}
 for _, v in pairs(workspace.MonsterSpawners:GetChildren()) do table.insert(spawnerstable, v.Name) end
 local accesoriestable = {}
 for _, v in pairs(game:GetService("ReplicatedStorage").Accessories:GetChildren()) do if v.Name ~= "UpdateMeter" then table.insert(accesoriestable, v.Name) end end
-for i, v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").PlanterTypes).GetTypes)) do for e,z in pairs(v) do table.insert(temptable.allplanters, e) end end
 table.sort(fieldstable)
 table.sort(accesoriestable)
 table.sort(toystable)
 table.sort(spawnerstable)
 table.sort(masktable)
-table.sort(temptable.allplanters)
 table.sort(collectorstable)
 
 -- float pad
@@ -830,7 +823,6 @@ local function makequests()
             local image = v.Platform.AlertPos.AlertGui.ImageLabel
             local button = game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.ActivateButton.MouseButton1Click
             if image.ImageTransparency == 0 then
-
                 addToQueue("claim_quest:"..v.Name, function()
                     local hasRoute = table.find({"Black Bear", "Bucko Bee", "Polar Bear", "Brown Bear", "Riley Bee"}, v.Name)
                     if kocmoc.toggles.legit and hasRoute then
@@ -1129,7 +1121,7 @@ local aqs = setttab:CreateSection("Auto-Boosting")
 _buttons["boosting"]["lockfield"] = aqs:CreateToggle("Lock Field", nil, function(State) kocmoc.toggles.boosting.lockfield = State end):AddToolTip("Will not perform any other activity while boosting. Only collecting & converting")
 _buttons["boosting"]["glitterrefresh"] = aqs:CreateToggle("Use Glitter to Refresh", nil, function(State) kocmoc.toggles.boosting.glitterefresh = State end):AddToolTip("Will attempt to use glitter to refresh your boost just before it ends")
 _buttons["boosting"]["jellybeans"] = aqs:CreateToggle("Use Jellybeans", nil, function(State) kocmoc.toggles.boosting.jellybeans = State end):AddToolTip("Only uses jellybeans if you have more than 85")
-_buttons["boosting"]["increaseballooncap"] = aqs:CreateToggle("Multiply Balloon Cap", nil, function(State) kocmoc.toggles.boosting.increaseballooncap = State end):AddToolTip("Multiplies \"Convert Balloon At\" by the level of your fiend boost")
+_buttons["boosting"]["increaseballooncap"] = aqs:CreateToggle("Multiply Balloon Cap", nil, function(State) kocmoc.toggles.boosting.increaseballooncap = State end):AddToolTip("Multiplies \"Convert Balloon At\" by the level of your field boost")
 
 
 local aqs = setttab:CreateSection("Legit Mode")
@@ -1782,8 +1774,8 @@ task.spawn(function() while task.wait(1) do
     if kocmoc.toggles.autoonettart and workspace.Toys:FindFirstChild("Onett's Lid Art") and canToyBeUsed("Onett's Lid Art") then
         if not addToQueue("onettlidart", function() 
             routeToField("Mountain Top Field")
-            playRoute("Mountain Top Field", "Toys/Onett Lid Art")
-            playRoute("Toys/Onett Lid Art", "Mountain Top Field")
+            playRoute("Mountain Top Field", "Toys/Onett's Lid Art")
+            playRoute("Toys/Onett's Lid Art", "Mountain Top Field")
         end) then
             game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Onett's Lid Art")
             task.wait(5)
