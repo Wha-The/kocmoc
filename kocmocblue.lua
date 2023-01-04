@@ -326,8 +326,8 @@ local function enableall()
 end
 
 local function makesprinklers()
-    sprinkler = statsget().EquippedSprinkler
-    e = 1
+    local sprinkler = statsget().EquippedSprinkler
+    local e = 1
     if sprinkler == "Basic Sprinkler" or sprinkler == "The Supreme Saturator" then
         e = 1
     elseif sprinkler == "Silver Soakers" then
@@ -409,6 +409,7 @@ local function killmobs()
         if v:FindFirstChild("Territory") then
             if v.Name ~= "Commando Chick" and v.Name ~= "CoconutCrab" and v.Name ~= "StumpSnail" and v.Name ~= "TunnelBear" and v.Name ~= "King Beetle Cave" and not v.Name:match("CaveMonster") and not v:FindFirstChild("TimerLabel", true).Visible then
                 if v:FindFirstChild("TimerLabel", true).Visible then continue end
+                local monsterpart
                 if v.Name:match("Werewolf") then
                     monsterpart = workspace.Territories.WerewolfPlateau.w
                 elseif v.Name:match("Mushroom") then
@@ -438,7 +439,7 @@ local function killmobs()
             return closest[1], closest[2]
         end)()
         if not d then break end
-        monsterpart, v = d.Part, d.v
+        local monsterpart, v = d.Part, d.v
         if v:FindFirstChild("TimerLabel", true).Visible then
             table.remove(mob_spawns, index)
             continue
@@ -953,7 +954,7 @@ local farmo = farmtab:CreateSection("Farming")
 local fielddropdown = farmo:CreateDropdown("Field", fieldstable, function(String) kocmoc.vars.field = String end) fielddropdown:SetOption(fieldstable[1])
 convertatslider = farmo:CreateSlider("Convert At", 0, 100, 100, false, function(Value) kocmoc.vars.convertat = Value end)
 _buttons["convertat"] = convertatslider
-convertatslider_balloon = farmo:CreateSlider("Convert Balloon At", 10000000000, 250000000000, 15000000000, false, function(Value) kocmoc.vars.convertatballoon = Value end)
+local convertatslider_balloon = farmo:CreateSlider("Convert Balloon At", 10000000000, 250000000000, 15000000000, false, function(Value) kocmoc.vars.convertatballoon = Value end)
 _buttons["convertatballoon"] = convertatslider_balloon
 local autofarmtoggle = farmo:CreateToggle("Autofarm ⚙", nil, function(State) kocmoc.toggles.autofarm = State end) autofarmtoggle:CreateKeybind("U", function(Key) end)
 _buttons["autofarm"] = autofarmtoggle
@@ -1599,7 +1600,19 @@ task.spawn(function() while task.wait(0.1) do
 end end)
 task.spawn(function()
     while task.wait(.3) do
-        if kocmoc.toggles.autodig then if game.Players.LocalPlayer then if game.Players.LocalPlayer.Character then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") then if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) then clickevent = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) or nil end end end if clickevent then clickevent:FireServer() end end end
+        if kocmoc.toggles.autodig then
+            if game.Players.LocalPlayer then
+                local clickevent
+                if game.Players.LocalPlayer.Character then    
+                    if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+                        if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) then
+                            clickevent = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):FindFirstChild("ClickEvent", true) or nil
+                        end
+                    end
+                end
+                if clickevent then clickevent:FireServer() end
+            end
+        end
     end
 end)
 
