@@ -79,9 +79,8 @@ local function playbackRoute(waypoints)
 	    if command.Command == "Jump" then
 	    	game.Players.LocalPlayer.Character.Humanoid.JumpPower = 77
 			if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-				game.Players.LocalPlayer.Character.Humanoid:MoveTo(cannonPos)
+				game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 			end
-	        game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 	    elseif command.Command == "Wait" then
 	    	task.wait(command.Data.Seconds)
 	    elseif command.Command == "Cannon" then
