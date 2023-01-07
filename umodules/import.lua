@@ -10,10 +10,10 @@ local function fetchcache(path)
         end
 
         if not isfile("kocmoc/cache/"..path.."/"..modulename) then
-            print("downloading: "..("https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename))
+            print("downloading "..("https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename))
             writefile("kocmoc/cache/"..path.."/"..modulename, game:HttpGet(moduledownload or "https://raw.githubusercontent.com/Wha-The/kocmoc/main/"..path.."/"..modulename))
         end
-        local load, err = loadstring(readfile("kocmoc/cache/"..path.."/"..modulename))
+        local load, err = loadstring(readfile("kocmoc/cache/"..path.."/"..modulename), path.."/"..modulename)
         if not load then
             error(err)
         end
