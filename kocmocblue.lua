@@ -8,10 +8,17 @@ repeat task.wait(0.1) until game:IsLoaded()
 if not shared.no_filesystem then
     -- check if the executor supports filesystem functions, if not, forcefully enable shared.no_filesystem
     shared.no_filesystem = not writefile or not readfile or not isfile or not isfolder or not makefolder
+    if not shared.no_filesystem then
+        warn("Your exploit has no filesystem support, the script will"..
+            "simulate a filesystem. Consider getting an exploit with filesystem"..
+            "support as the script will take longer to load. "..
+            "(Script will also be unable to remember field degredation timers)")
+    end
 end
 
 -- simulate filesystem
 if shared.no_filesystem then
+    print("Filesystem will be simulated. Please note this may lead to longer load times. (Script will also be unable to remember field degredation timers)")
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Wha-The/kocmoc/main/umodules/filesystem_simulation.lua"))()
 end
 
