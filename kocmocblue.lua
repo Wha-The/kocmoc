@@ -1,6 +1,6 @@
 shared.autoload = "afk"
 shared.no_filesystem = false
-shared.lightweight = true -- nothing external installed. this option does nothing but forcibly change the two options below
+shared.lightweight = false -- nothing external installed. this option does nothing but forcibly change the two options below
 shared.no_fs_proxy = false                                  or shared.lightweight
 shared.no_AHK = false               or shared.no_fs_proxy   or shared.lightweight
 
