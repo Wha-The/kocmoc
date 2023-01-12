@@ -91,6 +91,15 @@ local Pipes = {} do
         --     }),
         -- })
     end
+
+    if shared.no_AHK then
+        -- overwrite all AHK functions with empty functions
+        for key, v in pairs(Pipes) do
+            if typeof(v) == "function" then
+                Pipes[key] = function() end
+            end
+        end
+    end 
 end
 
 return Pipes
