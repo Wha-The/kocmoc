@@ -55,7 +55,8 @@ function proxywipecache(cachecallback, a1)
 	end
 end
 
-if shared.no_filesystem then
+if shared.no_filesystem or shared.no_fs_proxy then
+	-- appendfile isn't overwritten all of the time
     return writefile, function(n, d) return writefile(readfile(n)..d) end, readfile, function(n) return isfile(n) or isfolder(n) end, function()end
 end
 
