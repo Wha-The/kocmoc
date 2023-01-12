@@ -8,7 +8,7 @@ repeat task.wait(0.1) until game:IsLoaded()
 if not shared.no_filesystem then
     -- check if the executor supports filesystem functions, if not, forcefully enable shared.no_filesystem
     shared.no_filesystem = not writefile or not readfile or not isfile or not isfolder or not makefolder
-    if not shared.no_filesystem then
+    if shared.no_filesystem then
         warn("Your exploit has no filesystem support, the script will \n"..
             "simulate a filesystem. Consider getting an exploit with filesystem\n"..
             "support as the script will take longer to load. \n"..
