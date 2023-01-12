@@ -1,5 +1,8 @@
 shared.autoload = "afk"
 shared.no_filesystem = false
+shared.lightweight = false -- nothing external installed. this option does nothing but forcibly change the two options below
+shared.no_fs_proxy = false                  or shared.lightweight
+shared.no_AHK = false                       or shared.lightweight
 
 ------------------------------------------------------------------------
 
@@ -8,10 +11,10 @@ repeat task.wait(0.1) until game:IsLoaded()
 if not shared.no_filesystem then
     -- check if the executor supports filesystem functions, if not, forcefully enable shared.no_filesystem
     shared.no_filesystem = not writefile or not readfile or not isfile or not isfolder or not makefolder
-    if shared.no_filesystem then
-        warn("Your exploit has no filesystem support, the script will \n"..
-            "simulate a filesystem. Consider getting an exploit with filesystem\n"..
-            "support as the script will take longer to load. \n"..
+    if not shared.no_filesystem then
+        warn("Your exploit has no filesystem support, the script will"..
+            "simulate a filesystem. Consider getting an exploit with filesystem"..
+            "support as the script will take longer to load. "..
             "(Script will also be unable to remember field degredation timers)")
     end
 end
@@ -52,9 +55,9 @@ local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buf
 local farm, gettoken, identifyToken                                                             = import("tokens.lua")
 
 -- test filesystem proxy {
-    if not proxyfileexists("kocmoc") then
-        return messagebox("Unable to communicate with filesystem proxy. Please set it up.", "Script Stopped", 0)
-    end
+if not proxyfileexists("kocmoc") then
+    return messagebox("Unable to communicate with filesystem proxy. Please set it up.", "Script Stopped", 0)
+end
 -- }
 
 local playerstatsevent = game:GetService("ReplicatedStorage").Events.RetrievePlayerStats
