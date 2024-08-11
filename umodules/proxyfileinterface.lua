@@ -4,12 +4,13 @@ local HttpService = game:GetService("HttpService")
 local encode = function(thing) return HttpService:UrlEncode(thing) end
 
 local function communicate(method, path, body)
-	local success, result = pcall(syn.request, {
+	local success, result = pcall((syn and syn.request or http_request), {
 		Url = "http://127.0.0.1:22125"..path,
 		Method = method,
 		Body = body,
 	})
 	if not success then
+		print("Error communicating with filesystem proxy: "..result)
 		messagebox("Error communicating with filesystem proxy: "..result, "Error", 0) -- i know this hangs the thread
 	end
 	return result.Body
