@@ -492,8 +492,10 @@ local function killmobs()
         if kocmoc.toggles.legit then
             routeToField(find_field(monsterpart.Position))
             if find_field((game.Players.LocalPlayer.Character.PrimaryPart.Position)) == find_field(monsterpart.Position) then
-                game.Players.LocalPlayer.Character.Humanoid:MoveTo(monsterpart.Position)
-                task.wait(2)
+                if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    game.Players.LocalPlayer.Character.Humanoid:MoveTo(monsterpart.Position)
+                    task.wait(2)
+                end
             end
         end
 
@@ -512,14 +514,16 @@ local function killmobs()
         api.humanoidrootpart().CFrame = monsterpart.CFrame
         local died = false
         local conndied = game.Players.LocalPlayer.Character:WaitForChild("Humanoid").Died:Once(function()
+            print("died.")
             died = true
             timeout = true
         end)
-        repeat api.humanoidrootpart().CFrame = monsterpart.CFrame; avoidmobs(); task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible or timeout or died
-        if conndied then conndied:Disconnect() then
+        repeat avoidmobs(); task.wait(1) until v:FindFirstChild("TimerLabel", true).Visible or timeout or died
+        if conndied then conndied:Disconnect() end
 
         if timeout then
             table.remove(mob_spawns, index)
+            if died then print("died heard. breaking.") break end
             continue
         end
         task.wait(2)
@@ -894,7 +898,7 @@ local function makequests()
                         end
                     else
                         if kocmoc.toggles.tptonpc then
-                            game.Players.LocalPlayer.Character.Humanoid:Move(Vector3.zero)
+                            game.Players.LocalPlayer.Character:WaitForChild("Humanoid"):Move(Vector3.zero)
                             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
                             task.wait(1)
                             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
@@ -1727,7 +1731,11 @@ game:GetService("RunService").RenderStepped:Connect(function(step)
     -- end
 end)
 
-task.spawn(function() while task.wait(1) do
+local _counter = 0
+RunService.Heartbeat:Connect(function(dt)
+_counter += dt
+if _counter >= 1 then
+    _counter -= 1
     local stats = statsget()
     temptable.honeycurrent = stats.Totals.Honey
     if kocmoc.toggles.honeystorm and canToyBeUsed("Honeystorm") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Honeystorm") end
@@ -1910,7 +1918,8 @@ task.spawn(function() while task.wait(1) do
             label:UpdateText(item..": "..diff)
         end
     end
-end end)
+end
+end)
 
 game:GetService('RunService').Heartbeat:Connect(function()
     for i, v in pairs(game.Players.LocalPlayer.PlayerGui.ScreenGui:WaitForChild("MinigameLayer"):GetChildren()) do for k, q in pairs(v:WaitForChild("GuiGrid"):GetDescendants()) do if q.Name == "ObjContent" or q.Name == "ObjImage" then q.Visible = true end end end
