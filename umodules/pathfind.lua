@@ -77,8 +77,8 @@ end
 local function playbackRoute(waypoints)
 	for _, command in pairs(waypoints) do
 	    if command.Command == "Jump" then
-	    	game.Players.LocalPlayer.Character.Humanoid.JumpPower = 77
 			if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+				game.Players.LocalPlayer.Character.Humanoid.JumpPower = 77
 				game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 			end
 	    elseif command.Command == "Wait" then
