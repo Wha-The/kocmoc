@@ -61,13 +61,20 @@ print("pipes load finished")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
 local farm, gettoken, identifyToken                                                             = import("tokens.lua")
 
-local apitween = api.tween
-api.tween = function(t, pos)
-    local MAXSPEED = 30 -- studs per second
-    if t == nil then
-        t = (game.Players.LocalPlayer.Character.PrimaryPart.Position - pos.Position).magnitude / MAXSPEED
+do
+    local apitween = api.tween
+    api.tween = function(t, pos)
+        local MAXSPEED = 60 -- studs per second
+        if t == nil then
+            t = (game.Players.LocalPlayer.Character.PrimaryPart.Position - pos.Position).magnitude / MAXSPEED
+        end
+        return apitween(t, pos)
     end
-    return apitween(t, pos)
+    local apiwalkto = api.walkto
+    api.walkto = function(pos)
+        if not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
+        return api.walkto(pos)
+    end
 end
 
 -- test filesystem proxy {
@@ -434,6 +441,7 @@ local function balloonBlessingTimerLow()
 end
 
 local function avoidmobs()
+    if not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
     for i, v in pairs(workspace.Monsters:GetChildren()) do
         if v:FindFirstChild("Head") then
             if (v.Head.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude < 30 and api.humanoid():GetState() ~= Enum.HumanoidStateType.Freefall then
@@ -855,21 +863,21 @@ local function hasFruitTokenQuest()
     end
 end
 
--- task.spawn(function()
---     while task.wait(60) do
---         if kocmoc.toggles.autofarm and kocmoc.toggles.autodoquest then
---             if hasFruitTokenQuest() and table.find({"Pepper Patch", "Stump Field", "Pine Tree Forest"}, kocmoc.vars.field) then
---                 fieldselected = workspace.FlowerZones[kocmoc.vars.field]
---                 fieldposition = fieldselected.Position
---                 if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude <= temptable.magnitude then -- if the player's on their best blue/red field
---                     game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({
---                         ["Name"] = "Magic Bean"
---                     })
---                 end
---             end
---         end
---     end
--- end)
+task.spawn(function()
+    while task.wait(40) do
+        if kocmoc.toggles.autofarm and kocmoc.toggles.autodoquest then
+            if hasFruitTokenQuest() and table.find({"Pepper Patch", "Stump Field", "Pine Tree Forest"}, kocmoc.vars.field) then
+                fieldselected = workspace.FlowerZones[kocmoc.vars.field]
+                fieldposition = fieldselected.Position
+                if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude <= temptable.magnitude then -- if the player's on their best blue/red field
+                    game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({
+                        ["Name"] = "Magic Bean"
+                    })
+                end
+            end
+        end
+    end
+end)
 
 local function getcrosshairs(v)
     if v.BrickColor ~= BrickColor.new("Lime green") and v.BrickColor ~= BrickColor.new("Flint") then
@@ -928,6 +936,7 @@ local function makequests()
                         end
                     end
                     -- send "E"
+                    task.wait(1)
                     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
                     task.wait(.1)
                     game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
@@ -1236,7 +1245,7 @@ workspace.Particles.ChildAdded:Connect(function(v)
 end)
 
 
-local cccinterval = 5*60
+local cccinterval = 15*60
 local ccccounter = tick() - cccinterval
 local doBPChecks = function()
     if kocmoc.toggles.boosting.lockfield then
@@ -1402,7 +1411,8 @@ task.spawn(function() while task.wait() do
                             if api.partwithnamepart(o, workspace.Happenings.Puffshrooms) then
                                 fieldpos = api.partwithnamepart(o, workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
                                 fieldposition = fieldpos.Position
-                                if table.find(temptable.blacklistedfields, find_field(fieldposition)) then
+                                local fpos = find_field(fieldposition)
+                                if not fpos or table.find(temptable.blacklistedfields, fpos) then
                                     continue
                                 end
                                 break
