@@ -61,7 +61,14 @@ print("pipes load finished")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
 local farm, gettoken, identifyToken                                                             = import("tokens.lua")
 
-print("flag1")
+local apitween = api.tween
+api.tween = function(t, pos)
+    local MAXSPEED = 30 -- studs per second
+    if t == nil then
+        t = (game.Players.LocalPlayer.Character.PrimaryPart.Position - pos.Position).magnitude / MAXSPEED
+    end
+    return apitween(t, pos)
+end
 
 -- test filesystem proxy {
 if not proxyfileexists("kocmoc") then
@@ -94,6 +101,7 @@ end)
 
 
 local queued = {}
+local HoneyStat = game.Players.LocalPlayer:WaitForChild("CoreStats"):WaitForChild("Honey")
 local temptable = {
     version = "2.22.0m",
     blackfield = "Ant Field",
@@ -117,8 +125,8 @@ local temptable = {
     },
     farm_tokens = false,
     converting = false,
-    honeystart = statstable.Totals.Honey,
-    honeycurrent = statstable.Totals.Honey,
+    honeystart = HoneyStat.Value,
+    honeycurrent = HoneyStat.Value,
     dead = false,
     float = false,
     windy = nil,
@@ -311,10 +319,20 @@ local fieldposition
 -- functions
 
 -- Global on purpose
-function statsget() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end
+local STATSCACHE = (function() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end)()
+
+game.ReplicatedStorage.Events.ServerSystemEvent.OnClientEvent:Connect(function(k, t)
+    if k == "CacheReset" then
+        STATSCACHE = t
+        warn("stats have been refreshed from server")
+    end
+end)
+
+
+function statsget() return STATSCACHE end
 
 local function getTimeSinceToyActivation(name)
-    local t = require(game.ReplicatedStorage.ClientStatCache):Get("ToyTimes")[name]
+    local t = statsget().ToyTimes[name]
     if not t then return 9999999 end
     return workspace.OsTime.Value - t
 end
@@ -329,6 +347,8 @@ local function canToyBeUsed(toy)
     local timeleft = getTimeUntilToyAvailable(toy)
     return timeleft <= 0
 end
+
+
 
 local function disableall()
     if kocmoc.toggles.autofarm and not temptable.converting then
@@ -394,7 +414,7 @@ task.spawn(function()
             if command == "send_honey" then
                 Pipes.toAHK({
                     Type = "update_honey",
-                    Honey = statsget().Honey
+                    Honey = HoneyStat.Value
                 })
             elseif command == "send_buffs" then
                 compile_buff_list()
@@ -682,7 +702,7 @@ end
 local function converthoney()
     if temptable.converting then
         if game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.TextBox.Text ~= "Stop Making Honey" and game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.BackgroundColor3 ~= Color3.new(201, 39, 28) or (game:GetService("Players").LocalPlayer.SpawnPos.Value.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude > 10 then
-            api.tween(1, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
+            api.tween(nil, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
             task.wait(.9)
             if game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.TextBox.Text ~= "Stop Making Honey" and game.Players.LocalPlayer.PlayerGui.ScreenGui.ActivateButton.BackgroundColor3 ~= Color3.new(201, 39, 28) or (game:GetService("Players").LocalPlayer.SpawnPos.Value.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude > 10 then game:GetService("ReplicatedStorage").Events.PlayerHiveCommand:FireServer("ToggleHoneyMaking") end
             task.wait(.1)
@@ -723,7 +743,7 @@ end
 local function getcoco(v)
     if temptable.coconut then repeat task.wait() until not temptable.coconut end
     temptable.coconut = true
-    api.tween(.1, v.CFrame)
+    api.tween(nil, v.CFrame)
     repeat task.wait() api.walkTo(v.Position) until not v.Parent
     task.wait(.1)
     temptable.coconut = false
@@ -903,7 +923,7 @@ local function makequests()
                             task.wait(1)
                             game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z)
                         else
-                            api.tween(2,CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z))
+                            api.tween(nil,CFrame.new(v.Platform.Position.X, v.Platform.Position.Y+3, v.Platform.Position.Z))
                             task.wait(3)
                         end
                     end
@@ -988,7 +1008,7 @@ information:CreateLabel("Fork of kocmoc by weuz_ and mrdevl")
 local gainedSection = hometab:CreateSection("Gained")
 gainedSection:CreateButton("Reset Timer/Gained Honey", function()
     temptable.runningfor = 0
-    temptable.honeystart = statsget().Totals.Honey
+    temptable.honeystart = HoneyStat.Value
 end)
 gainedSection:CreateButton("Force Refresh Stats", function()
     local StatCache = require(game.ReplicatedStorage.ClientStatCache)
@@ -1081,7 +1101,7 @@ wayp:CreateDropdown("Toys Teleports", toystable, function(Option) d = workspace.
 wayp:CreateButton("Teleport to hive", function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game:GetService("Players").LocalPlayer.SpawnPos.Value end)
 
 local miscc = misctab:CreateSection("Misc")
-miscc:CreateButton("Ant Challenge Semi-Godmode", function() api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(1) game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge") game.Players.LocalPlayer.Character.HumanoidRootPart.Position = Vector3.new(93.4228, 42.3983, 553.128) task.wait(2) game.Players.LocalPlayer.Character.Humanoid.Name = 1 local l = game.Players.LocalPlayer.Character["1"]:Clone() l.Parent = game.Players.LocalPlayer.Character l.Name = "Humanoid" task.wait() game.Players.LocalPlayer.Character["1"]:Destroy() api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(8) api.tween(1, CFrame.new(93.4228, 32.3983, 553.128)) end)
+miscc:CreateButton("Ant Challenge Semi-Godmode", function() api.tween(nil, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(1) game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge") game.Players.LocalPlayer.Character.HumanoidRootPart.Position = Vector3.new(93.4228, 42.3983, 553.128) task.wait(2) game.Players.LocalPlayer.Character.Humanoid.Name = 1 local l = game.Players.LocalPlayer.Character["1"]:Clone() l.Parent = game.Players.LocalPlayer.Character l.Name = "Humanoid" task.wait() game.Players.LocalPlayer.Character["1"]:Destroy() api.tween(nil, CFrame.new(93.4228, 32.3983, 553.128)) task.wait(8) api.tween(nil, CFrame.new(93.4228, 32.3983, 553.128)) end)
 local wstoggle = miscc:CreateToggle("Walk Speed", nil, function(State) kocmoc.toggles.loopspeed = State end) wstoggle:CreateKeybind("K", function(Key) end)
 local jptoggle = miscc:CreateToggle("Jump Power", nil, function(State) kocmoc.toggles.loopjump = State end) jptoggle:CreateKeybind("L", function(Key) end)
 _buttons["loopspeed"], _buttons["loopjump"] = wstoggle, jptoggle
@@ -1319,7 +1339,8 @@ task.spawn(function() while task.wait() do
                     for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                         if v.Name == "Description" then
                             local npcconsidered = false
-                            for npc, _ in pairs(kocmoc.vars.npcprefer) do
+                            for npc, considered in pairs(kocmoc.vars.npcprefer) do
+                                if not considered then continue end
                                 if string.match(v.Parent.Parent.TitleBarBG.TitleBar.Text, npc) then
                                     npcconsidered = true
                                     break
@@ -1367,33 +1388,40 @@ task.spawn(function() while task.wait() do
                 if temptable.sprouts.detected and temptable.sprouts.coords and kocmoc.toggles.farmsprouts then
                     if tonumber(pollenpercentage) >= 99 then
                         convert_all()
+                        pollenpercentage = 0
                     end
                     fieldposition = temptable.sprouts.coords.Position
                     fieldpos = temptable.sprouts.coords
-                end
-                if kocmoc.toggles.farmpuffshrooms and workspace.Happenings.Puffshrooms:FindFirstChildOfClass("Model") then
-                    temptable.magnitude = 40
-                    local order = {"Mythic", "Legendary", "Epic", "Rare"}
-                    fieldpos, fieldposition = nil, nil
-                    for _, o in pairs(order) do
-                        if api.partwithnamepart(o, workspace.Happenings.Puffshrooms) then
-                            fieldpos = api.partwithnamepart(o, workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                else
+                    -- sprout > puffs
+                    if kocmoc.toggles.farmpuffshrooms and workspace.Happenings.Puffshrooms:FindFirstChildOfClass("Model") then
+                        temptable.magnitude = 40
+                        local order = {"Mythic", "Legendary", "Epic", "Rare"}
+                        fieldpos, fieldposition = nil, nil
+                        for _, o in pairs(order) do
+                            if api.partwithnamepart(o, workspace.Happenings.Puffshrooms) then
+                                fieldpos = api.partwithnamepart(o, workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
+                                fieldposition = fieldpos.Position
+                                if table.find(temptable.blacklistedfields, find_field(fieldposition)) then
+                                    continue
+                                end
+                                break
+                            end
+                        end
+                        if not fieldpos then
+                            fieldpos = api.getbiggestmodel(workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
                             fieldposition = fieldpos.Position
                         end
+                        if lastPuff and lastPuff ~= fieldposition then
+                            task.wait(1.5)
+                            Pipes.toAHK({
+                                Type = "increment_stat",
+                                Stat = "Total Puffshrooms",
+                            })
+                            for i=1, 10 do gettoken(lastPuff) end
+                        end
+                        lastPuff = fieldposition
                     end
-                    if not fieldpos then
-                        fieldpos = api.getbiggestmodel(workspace.Happenings.Puffshrooms):FindFirstChild("Puffball Stem").CFrame
-                        fieldposition = fieldpos.Position
-                    end
-                    if lastPuff and lastPuff ~= fieldposition then
-                        task.wait(1.5)
-                        Pipes.toAHK({
-                            Type = "increment_stat",
-                            Stat = "Total Puffshrooms",
-                        })
-                        for i=1, 10 do gettoken(lastPuff) end
-                    end
-                    lastPuff = fieldposition
                 end
             end
             if kocmoc.toggles.automask and statsget()["SessionAccessories"]["Hat"] ~= mask then
@@ -1417,7 +1445,7 @@ task.spawn(function() while task.wait() do
                 if not temptable.farm_tokens then
                     routeToField(find_field(fieldposition))
                     if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
-                        api.tween(2, fieldpos)
+                        api.tween(nil, fieldpos)
                         task.wait(2)
                     end
                     temptable.farm_tokens = true
@@ -1429,15 +1457,15 @@ task.spawn(function() while task.wait() do
                             while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
                                 workspace.Map.Ground.HighBlock.CanCollide = false 
                                 mondopition = workspace.Monsters["Mondo Chick (Lvl 8)"].Head.Position
-                                api.tween(1, CFrame.new(mondopition.x, mondopition.Y - 52, mondopition.z))
+                                api.tween(nil, CFrame.new(mondopition.x, mondopition.Y - 52, mondopition.z))
                                 task.wait(1)
                                 temptable.float = true
                             end
-                            task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(2.5, CFrame.new(73.2, 176.35, -167)) task.wait(1)
+                            task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(nil, CFrame.new(73.2, 176.35, -167)) task.wait(1)
                             for i = 0, 50 do 
                                 gettoken(CFrame.new(73.2, 176.35, -167).Position) 
                             end 
-                            api.tween(2, fieldpos) 
+                            api.tween(nil, fieldpos) 
                             temptable.started.mondo = false
                         end
                     end
@@ -1445,11 +1473,11 @@ task.spawn(function() while task.wait() do
                         if kocmoc.toggles.legit then
                             routeToField(find_field(fieldposition))
                             if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
-                                api.tween(2, fieldpos)
+                                api.tween(nil, fieldpos)
                             end
                             task.wait(.2)
                         else
-                            api.tween(2, fieldpos)
+                            api.tween(nil, fieldpos)
                             task.wait(.2)
                         end
                         if kocmoc.toggles.autosprinkler then makesprinklers() end
@@ -1466,7 +1494,7 @@ task.spawn(function() while task.wait() do
                 if kocmoc.toggles.legit then
                     routeToField("hive")
                 else
-                    api.tween(2, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
+                    api.tween(nil, game:GetService("Players").LocalPlayer.SpawnPos.Value * CFrame.fromEulerAnglesXYZ(0, 110, 0) + Vector3.new(0, 0, 9))
                 end
                 
                 task.wait(2)
@@ -1547,14 +1575,14 @@ task.spawn(function()
                                 game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
                             until (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude < 3 or timeout
                             if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
-                                api.tween(1, CFrame.new(v.Position)) task.wait(1)
-                                api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
+                                api.tween(nil, CFrame.new(v.Position)) task.wait(1)
+                                api.tween(nil, CFrame.new(v.Position)) task.wait(.5)
                             else
                                 game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
                                 task.wait(3)
                                 if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
-                                    api.tween(1, CFrame.new(v.Position)) task.wait(1)
-                                    api.tween(0.5, CFrame.new(v.Position)) task.wait(.5)
+                                    api.tween(nil, CFrame.new(v.Position)) task.wait(1)
+                                    api.tween(nil, CFrame.new(v.Position)) task.wait(.5)
                                 end
                             end
 
@@ -1652,7 +1680,7 @@ task.spawn(function() while task.wait() do
                     end
                 end
             end
-            if not awb then api.tween(1,temptable.gacf(temptable.windy, 5)) task.wait(1) awb = true end
+            if not awb then api.tween(nil,temptable.gacf(temptable.windy, 5)) task.wait(1) awb = true end
             if awb and temptable.windy.Name == "Windy" then
                 api.humanoidrootpart().CFrame = temptable.gacf(temptable.windy, 25) temptable.float = true task.wait()
             end
@@ -1732,12 +1760,12 @@ game:GetService("RunService").RenderStepped:Connect(function(step)
 end)
 
 local _counter = 0
-RunService.Heartbeat:Connect(function(dt)
+game:GetService("RunService").Heartbeat:Connect(function(dt)
 _counter += dt
 if _counter >= 1 then
     _counter -= 1
     local stats = statsget()
-    temptable.honeycurrent = stats.Totals.Honey
+    temptable.honeycurrent = HoneyStat.Value
     if kocmoc.toggles.honeystorm and canToyBeUsed("Honeystorm") then game.ReplicatedStorage.Events.ToyEvent:FireServer("Honeystorm") end
     if kocmoc.toggles.collectgingerbreads and workspace.Toys:FindFirstChild("Gingerbread House") and canToyBeUsed("Gingerbread House") then game:GetService("ReplicatedStorage").Events.ToyEvent:FireServer("Gingerbread House") end
     if kocmoc.toggles.autodispense then
@@ -1755,6 +1783,7 @@ if _counter >= 1 then
     end
     if kocmoc.toggles.clock and canToyBeUsed("Wealth Clock") then
         if not addToQueue("clock", function() 
+            if not canToyBeUsed("Wealth Clock") then return end
             routeToField("Clover Field")
             playRoute("Clover Field", "Toys/Wealth Clock")
             task.wait(1)
@@ -2057,11 +2086,15 @@ do
         end
     end
 end
-if shared.autoload then if isfile("kocmoc/BSS_"..shared.autoload..".json") then load_config(shared.autoload) end end
 local function _hidePart(part)
     if part:IsA("BasePart") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency end
 end
+
+-- some errror here: pairs got nil
 if workspace.Toys:FindFirstChild("Snowbear") then for _, ball in pairs(workspace.Toys.Snowbear.Snowman:GetDescendants()) do _hidePart(ball) end end
 if workspace.Leaderboards:FindFirstChild("SnowbearKills") then for _, part in pairs(workspace.Leaderboards.SnowbearKills:GetDescendants()) do _hidePart(part) end _hidePart(workspace.Leaderboards:FindFirstChild("SnowbearKills")) end
 for _, part in pairs(workspace:FindFirstChild("FieldDecos"):GetDescendants()) do _hidePart(part) end
 for _, part in pairs(workspace:FindFirstChild("Decorations"):GetDescendants()) do if part:IsA("BasePart") and (part.Parent.Name == "Bush" or part.Parent.Name == "Blue Flower" or part.Parent.Name == "Mushroom") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency end end
+-- before here
+
+if shared.autoload then if isfile("kocmoc/BSS_"..shared.autoload..".json") then load_config(shared.autoload) end end
