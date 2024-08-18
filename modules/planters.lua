@@ -49,12 +49,48 @@ local nectarprioritypresets = {
 }
 
 local GetPlanterData = require(game.ReplicatedStorage.PlanterTypes).Get
+local getupvalues = debug.getupvalues or getupvalues
+
+local function compileactiveplanters()
+    local t = workspace.Planters:GetChildren()
+    local planters = {}
+
+    local function find_closest_pot_model(pos)
+        local closest, closestMag = nil, math.huge
+        for _, p in t do
+            if not p:IsA("Model") then continue end
+            local mag = (p:GetModelCFrame().Position - pos).Magnitude
+            if mag < closestMag then
+                closestMag = mag
+                closest = p
+            end
+        end
+        return closest
+    end
+
+    for _, p in t do
+        if not p:IsA("MeshPart") then continue end -- not PlanterBulb
+        local success, textlabel = pcall(function()
+            return p["Gui Attach"]["Planter Gui"].Bar.TextLabel
+        end)
+        if not success then print(textlabel) continue end -- not ours
+        local percent = tonumber(textlabel.Text:match("%((.-)%%%)"))/100
+        local pot = find_closest_pot_model(p.Position)
+        table.insert(planters, {
+            IsMine = true,
+            GrowthPercent = percent,
+            PotModel = pot,
+            Type = pot.Name,
+        })
+    end
+    return planters
+end
 
 local function compile_planters()
     local planters = {}
     local nectar -- find the nectar which the field where the planter on is for
 
-    for i,v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do 
+    for i,v in compileactiveplanters() do 
         if v.IsMine then
             local field = find_field(v.PotModel.Soil.Position)
             local nectar_type do
@@ -90,7 +126,7 @@ end
 
 local function place_new_planters()
     local total = 0
-    for i,v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do 
+    for i,v in compileactiveplanters() do
         if v.IsMine then
             total += 1
         end
@@ -103,7 +139,7 @@ local function place_new_planters()
     local occupied_fields = {}
     local planters_in_use = {}
     local nectars_already_working_on = {}
-    for i,v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do 
+    for i,v in compileactiveplanters() do 
         if v.IsMine then
             table.insert(occupied_fields, find_field(v.PotModel.Soil.Position))
             table.insert(planters_in_use, v.PotModel.Name)
@@ -256,7 +292,7 @@ end
 
 local function collectplanters(force_harvest)
     local NectarPriority = get_nectar_priority()
-    for i, v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]) do
+    for i, v in compileactiveplanters() do
         if v.IsMine then
             local field = find_field(v.PotModel.Soil.Position)
             local should_harvest = v.GrowthPercent == 1 -- compute if the player should harvest planter
@@ -280,7 +316,7 @@ local function collectplanters(force_harvest)
             if not force_harvest and not should_harvest then continue end
             if kocmoc.toggles.legit then
                 routeToField(field)
-                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.PotModel.Soil.Position)
+                game.Players.LocalPlayer.Character:WaitForChild("Humanoid"):MoveTo(v.PotModel.Soil.Position)
             end
             if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) ~= field then
                 game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(v.PotModel.Soil.CFrame)
