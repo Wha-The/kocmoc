@@ -7,6 +7,7 @@ local playRoute, routeToField 															= import("routes.lua")
 local Pipes 																			= import("Pipes.lua")
 local farm, gettoken 																	= import("tokens.lua")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list  = import("buffs.lua")
+local api                                                                               = uimport("api.lua", "https://raw.githubusercontent.com/Boxking776/kocmoc/main/api.lua")
 
 local HttpService = game:GetService("HttpService")
 
@@ -39,6 +40,8 @@ local ColoredPlanters = {
     ["Hydroponic Planter"] = "Blue",
     ["Blue Clay Planter"] = "Blue",
 }
+
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local allnectars = {"Comforting Nectar", "Invigorating Nectar", "Motivating Nectar", "Refreshing Nectar", "Satisfying Nectar"} -- The order must be preserved. `nectarprioritypresets` uses this order.
 
@@ -80,7 +83,7 @@ local function compileactiveplanters()
             IsMine = true,
             GrowthPercent = percent,
             PotModel = pot,
-            Type = pot.Name,
+            Type = string.gsub(pot.Name, " Planter", ""),
         })
     end
     return planters
@@ -257,8 +260,8 @@ local function place_new_planters()
                 end
 
                 -- check if the player owns this pot
-                local potId = string.gsub(pot, " ", "")
-                if statsget().Eggs[potId] and statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
+                local potId = string.gsub(pot, " Planter", "Planter")
+                if not statsget().Eggs[potId] or statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
                     continue
                 end
                 if not table.find(planters_in_use, pot) then
@@ -282,6 +285,7 @@ local function place_new_planters()
             game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(workspace.FlowerZones[field].Position) + Vector3.new(0, 3, 0))
         end
         task.wait(1)
+        print("Placing Pot: " .. pot .. " on Field: " .. field)
         game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = pot})
         task.wait(1)
         total += 1
@@ -292,6 +296,7 @@ end
 
 local function collectplanters(force_harvest)
     local NectarPriority = get_nectar_priority()
+    local has_collected = false
     for i, v in compileactiveplanters() do
         if v.IsMine then
             local field = find_field(v.PotModel.Soil.Position)
@@ -319,11 +324,17 @@ local function collectplanters(force_harvest)
                 game.Players.LocalPlayer.Character:WaitForChild("Humanoid"):MoveTo(v.PotModel.Soil.Position)
             end
             if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) ~= field then
-                game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(v.PotModel.Soil.CFrame)
+                api.tween(nil, v.PotModel.Soil.CFrame)
             end
             local Soil = v.PotModel.Soil
             task.wait(1)
-            game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(v.ActorID)
+            -- send "E"
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.spawn(function()
+                task.wait(.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            end)
+
             
             local LastCollectTimes = HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters"))
             local existing_degradation = 0
@@ -342,8 +353,10 @@ local function collectplanters(force_harvest)
             task.wait(3)
             for i = 1, 8 do gettoken(Soil.Position) end
             task.wait(3)
+            has_collected = true
         end
     end
+    if has_collected then refresh_stats() end
     place_new_planters()
 end
 
