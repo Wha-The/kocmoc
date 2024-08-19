@@ -1,3 +1,45 @@
+---- solara temp fix -------------
+-- local HttpService = game:GetService("HttpService")
+-- local encode = function(thing) return HttpService:UrlEncode(thing) end
+-- function communicate(method, path, body)
+-- 	local success, result = pcall((syn and syn.request or http_request), {
+-- 		Url = "http://127.0.0.1:22125"..path,
+-- 		Method = method,
+-- 		Body = body,
+-- 	})
+-- 	if not success then
+-- 		print("Error communicating with filesystem proxy: "..result)
+-- 		messagebox("Error communicating with filesystem proxy: "..result, "Error", 0) -- i know this hangs the thread
+-- 	end
+-- 	return result.Body
+-- end
+
+-- function proxyfilewrite(file, data)
+-- 	return communicate("POST", "/write?file="..encode(file), data)
+-- end
+-- function proxyfileappend(file, data)
+-- 	return communicate("POST", "/append?file="..encode(file), data)
+-- end
+-- function proxyfileread(file)
+-- 	return communicate("GET", "/read?file="..encode(file))
+-- end
+-- function proxyfileexists(file)
+-- 	return communicate("GET", "/exists?file="..encode(file)) == "1"
+-- end
+
+-- readfile = proxyfileread
+-- isfile = proxyfileexists
+-- writefile = proxyfilewrite
+
+-- require = function(robloxmodule)
+--     warn("require is disabled, module: ", robloxmodule:GetFullName())
+--     return {}
+-- end
+
+
+-----------------------
+
+
 shared.autoload = "afk"
 shared.no_filesystem = false
 shared.lightweight = true -- nothing external installed. this option does nothing but forcibly change the two options below
@@ -40,42 +82,20 @@ if not isfile("kocmoc/cache/umodules/import.lua") then writefile("kocmoc/cache/u
 local uimport, import = loadstring(readfile("kocmoc/cache/umodules/import.lua"))()
 
 -- load utility modules
-warn("load utility modules")
-
 local library                                                                                   = uimport("bracketv4.lua")
 local api                                                                                       = uimport("api.lua", "https://raw.githubusercontent.com/Boxking776/kocmoc/main/api.lua")
 local pathfind, playbackRoute                                                                   = uimport("pathfind.lua")
 local proxyfilewrite, proxyfileappend, proxyfileread, proxyfileexists, proxywipecache           = uimport("proxyfileinterface.lua")
 
-warn("load modules")
 -- load modules
 local count_stray_balloons, gethiveballoon, get_hive_balloon_size                               = import("balloons.lua")
 local find_field                                                                                = import("find_field.lua")
 local playRoute, routeToField                                                                   = import("routes.lua")
-print("routes finished")
--- local compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets  = import("planters.lua")
-print("planters finished")
+local compile_planters, place_new_planters, collectplanters, allnectars, nectarprioritypresets  = import("planters.lua")
 
 local Pipes                                                                                     = import("Pipes.lua")
-print("pipes load finished")
 local get_buff_combo, get_buff_active_duration, get_buff_percentage, compile_buff_list          = import("buffs.lua")
 local farm, gettoken, identifyToken                                                             = import("tokens.lua")
-
-do
-    local apitween = api.tween
-    api.tween = function(t, pos)
-        local MAXSPEED = 60 -- studs per second
-        if t == nil then
-            t = (game.Players.LocalPlayer.Character.PrimaryPart.Position - pos.Position).magnitude / MAXSPEED
-        end
-        return apitween(t, pos)
-    end
-    local apiwalkto = api.walkto
-    api.walkto = function(pos)
-        if not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
-        return api.walkto(pos)
-    end
-end
 
 -- test filesystem proxy {
 if not proxyfileexists("kocmoc") then
@@ -105,7 +125,62 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
+do
+    local apitween = api.tween
+    api.tween = function(t, pos)
+        local MAXSPEED = 60 -- studs per second
+        if t == nil then
+            t = (game.Players.LocalPlayer.Character.PrimaryPart.Position - pos.Position).magnitude / MAXSPEED
+        end
+        if t > 50 then
+            -- something is wrong
+            return
+        end
+        return apitween(t, pos)
+    end
+    local apiwalkto = api.walkto
+    api.walkto = function(pos)
+        if not game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then return end
+        return api.walkto(pos)
+    end
 
+    api.humanoid = function()
+        return game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+    end
+end
+
+local function customChildAdded(folder, childAdded, childRemoved)
+	folder.ChildAdded:Connect(childAdded)
+    folder.ChildRemoved:Connect(childRemoved)
+    return folder
+    
+    -- local PARTICLES = {}
+	-- local count = 0
+	-- local RESET = 1/15
+	-- particle = game:GetService("RunService").Heartbeat:Connect(function(dt)
+	-- 	count += dt
+	-- 	if count < RESET then return end
+	-- 	count %= RESET
+	-- 	local t = folder:GetChildren()
+	-- 	local exists = {}
+	-- 	for _, p in t do
+	-- 		if not PARTICLES[p] then
+	-- 			PARTICLES[p] = true
+	-- 			childAdded(p)
+	-- 		end
+	-- 		exists[p] = true
+	-- 	end
+	-- 	for p, _ in PARTICLES do
+	-- 		if not t[p] then
+	-- 			PARTICLES[p] = nil
+	-- 			childRemoved(p)
+	-- 		end
+	-- 	end
+	-- end)
+	-- return particle
+end
+
+local getupvalues = debug.getupvalues or getupvalues
 
 local queued = {}
 local HoneyStat = game.Players.LocalPlayer:WaitForChild("CoreStats"):WaitForChild("Honey")
@@ -175,8 +250,9 @@ for i,v in pairs(workspace.FlowerZones:GetChildren()) do if v:FindFirstChild("Co
 
 local masktable = {}
 for _, v in pairs(game:GetService("ReplicatedStorage").Accessories:GetChildren()) do if string.match(v.Name, "Mask") then table.insert(masktable, v.Name) end end
--- local collectorstable = {}
--- for _, v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").Collectors).Exists)) do for e,r in pairs(v) do table.insert(collectorstable, e) end end
+local collectorstable = {}
+-- SOLARA FIX
+for _, v in pairs(getupvalues(require(game:GetService("ReplicatedStorage").Collectors).Exists)) do for e,r in pairs(v) do table.insert(collectorstable, e) end end
 local fieldstable = {}
 for _, v in pairs(workspace.FlowerZones:GetChildren()) do table.insert(fieldstable, v.Name) end
 local toystable = {}
@@ -310,8 +386,9 @@ kocmoc = {
         farmnectars = {},
     },
 }
--- !FIX
--- for _, nectar in pairs(allnectars) do kocmoc.planters.farmnectars[nectar] = true end
+shared.kocmoc = kocmoc
+-- SOLARA FIX
+for _, nectar in pairs(allnectars) do kocmoc.planters.farmnectars[nectar] = true end
 local function addToQueue(id, fn, options)
     options = options or {}
     if not options.ignore_legit and not kocmoc.toggles.legit then return end
@@ -326,7 +403,7 @@ local fieldposition
 -- functions
 
 -- Global on purpose
-local STATSCACHE = (function() local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() return stats end)()
+local STATSCACHE = table.clone(statstable)
 
 game.ReplicatedStorage.Events.ServerSystemEvent.OnClientEvent:Connect(function(k, t)
     if k == "CacheReset" then
@@ -337,6 +414,8 @@ end)
 
 
 function statsget() return STATSCACHE end
+function refresh_stats() STATSCACHE = get_latest_player_stats() end
+
 
 local function getTimeSinceToyActivation(name)
     local t = statsget().ToyTimes[name]
@@ -568,21 +647,28 @@ local function killmobs()
 end
 
 local function farmant()
+    if kocmoc.toggles.legit then
+        routeToField("Toys/Ant Challenge")
+        task.wait(1)
+    end
+
     antpart.CanCollide = true
     temptable.started.ant = true
     anttable = {left = true, right = false}
     local stats = get_latest_player_stats()
     temptable.oldtool = stats['EquippedCollector']
     temptable.oldmask = stats["SessionAccessories"]["Hat"]
-    equip_mask("Demon Mask")
+    temptable.float = true
+    -- equip_mask("Demon Mask")
     game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = "Spark Staff",["Category"] = "Collector"})
     game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge")
     kocmoc.toggles.autodig = true
-    acl = CFrame.new(127, 48, 547)
-    acr = CFrame.new(65, 48, 534)
+    acl = CFrame.new(133, 48, 591)
+    acr = CFrame.new(43, 48, 592)
     task.wait(1)
     game.ReplicatedStorage.Events.PlayerActivesCommand:FireServer({["Name"] = "Sprinkler Builder"})
     api.humanoidrootpart().CFrame = api.humanoidrootpart().CFrame + Vector3.new(0, 15, 0)
+    floatpad.CanCollide = true floatpad.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y-3.5, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z)
     task.wait(3)
     repeat
         task.wait()
@@ -590,10 +676,12 @@ local function farmant()
             if v:FindFirstChild("Root") then
                 if (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.left then
                     api.humanoidrootpart().CFrame = acr
+                    floatpad.CanCollide = true floatpad.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y-3.5, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z)
                     anttable.left = false anttable.right = true
                     wait(.1)
                 elseif (v.Root.Position-api.humanoidrootpart().Position).magnitude <= 40 and anttable.right then
                     api.humanoidrootpart().CFrame = acl
+                    floatpad.CanCollide = true floatpad.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y-3.5, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z)
                     anttable.left = true anttable.right = false
                     wait(.1)
                 end
@@ -605,9 +693,13 @@ local function farmant()
         Type = temptable.oldtool,
         Category = "Collector",
     })
-    equip_mask(temptable.oldmask)
+    -- route BACK
+    playRoute("Toys/Free Ant Pass Dispenser", "Dandelion Field")
+    -- equip_mask(temptable.oldmask)
     temptable.started.ant = false
+    temptable.float = false
     antpart.CanCollide = false
+    floatpad.CanCollide = false
 end
 
 local attempt_snowbear = function()
@@ -721,8 +813,8 @@ end
 local function walk_to_bubble()
     for i, v in pairs(workspace.Particles:GetChildren()) do
         if string.find(v.Name, "Bubble") and temptable.running == false and tonumber((v.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
-            api.humanoid():MoveTo(v.Position) 
-            repeat task.wait() until (game.Players.LocalPlayer.Character.PrimaryPart.Position * Vector3.new(1,0,1)- v.Position * Vector3.new(1,0,1)).Magnitude < 11 or not v.Parent
+            api.humanoid():MoveTo(v.Position)
+            repeat task.wait() until (game.Players.LocalPlayer.Character.PrimaryPart.Position * Vector3.new(1,0,1) - v.Position * Vector3.new(1,0,1)).Magnitude < 11 or not v.Parent
         end
     end
 end
@@ -751,7 +843,7 @@ end
 local function getcoco(v)
     if temptable.coconut then repeat task.wait() until not temptable.coconut end
     temptable.coconut = true
-    api.tween(nil, v.CFrame)
+    api.tween(.1, v.CFrame)
     repeat task.wait() api.walkTo(v.Position) until not v.Parent
     task.wait(.1)
     temptable.coconut = false
@@ -1020,8 +1112,7 @@ gainedSection:CreateButton("Reset Timer/Gained Honey", function()
     temptable.honeystart = HoneyStat.Value
 end)
 gainedSection:CreateButton("Force Refresh Stats", function()
-    local StatCache = require(game.ReplicatedStorage.ClientStatCache)
-    StatCache:Update()
+    refresh_stats()
 end)
 local timepassedlabel = gainedSection:CreateLabel("Time Elapsed: 0:0:0")
 local gainedhoneylabel = gainedSection:CreateLabel("Gained Honey: 0")
@@ -1119,7 +1210,7 @@ misco:CreateDropdown("Equip Accesories", accesoriestable, function(Option) local
 misco:CreateDropdown("Equip Masks", masktable, function(Option) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = Option, ["Category"] = "Accessory" } game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end)
 -- misco:CreateDropdown("Equip Collectors", collectorstable, function(Option) local ohString1 = "Equip" local ohTable2 = { ["Mute"] = false, ["Type"] = Option, ["Category"] = "Collector" } game:GetService("ReplicatedStorage").Events.ItemPackageEvent:InvokeServer(ohString1, ohTable2) end)
 misco:CreateDropdown("Generate Amulet", {"Supreme Star Amulet", "Diamond Star Amulet", "Gold Star Amulet","Silver Star Amulet","Bronze Star Amulet","Moon Amulet"}, function(Option) local A_1 = Option.." Generator" local Event = game:GetService("ReplicatedStorage").Events.ToyEvent Event:FireServer(A_1) end)
-misco:CreateButton("Export Stats Table", function() local StatCache = require(game.ReplicatedStorage.ClientStatCache) MainThread.resolve(function()proxyfilewrite("Stats_"..api.nickname..".json", StatCache:Encode())end) end)
+misco:CreateButton("Export Stats Table", function() MainThread.resolve(function()proxyfilewrite("Stats_"..api.nickname..".json", game:GetService("HttpService"):JSONEncode(statsget()))end) end)
 misco:CreateButton("Do Ant Challenge", function() farmant() end)
 misco:CreateButton("Activate 10m buffs", function()
     game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Red Extract"})
@@ -1148,8 +1239,8 @@ extras:CreateButton("Boost FPS", function()
         end
     end
 end)
--- extras:CreateTextBox("Glider Speed", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Speed = Value setupvalue(st, st[1]'Glider', glidersTable) end)
--- extras:CreateTextBox("Glider Float", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Float = Value setupvalue(st, st[1]'Glider', glidersTable) end)
+extras:CreateTextBox("Glider Speed", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Speed = Value setupvalue(st, st[1]'Glider', glidersTable) end)
+extras:CreateTextBox("Glider Float", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Float = Value setupvalue(st, st[1]'Glider', glidersTable) end)
 extras:CreateButton("Invisibility", function(State) api.teleport(CFrame.new(0,0,0)) wait(1) if game.Players.LocalPlayer.Character:FindFirstChild('LowerTorso') then Root = game.Players.LocalPlayer.Character.LowerTorso.Root:Clone() game.Players.LocalPlayer.Character.LowerTorso.Root:Destroy() Root.Parent = game.Players.LocalPlayer.Character.LowerTorso api.teleport(game:GetService("Players").LocalPlayer.SpawnPos.Value) end end)
 extras:CreateToggle("Float", nil, function(State) temptable.float = State end)
 
@@ -1157,16 +1248,16 @@ _buttons["planters"] = {}
 local planters = extrtab:CreateSection("Planters")
 planters:CreateLabel("Keep nectars up (recommended: 4)")
 
--- !FIX
--- for _, nectar in pairs(allnectars) do
---     local tog = planters:CreateToggle(nectar, nil, function(State) kocmoc.planters.farmnectars[nectar] = State end)
---     _buttons["planters"][nectar] = tog
---     tog:SetState(true)
--- end
+-- SOLARA FIX
+for _, nectar in pairs(allnectars) do
+    local tog = planters:CreateToggle(nectar, nil, function(State) kocmoc.planters.farmnectars[nectar] = State end)
+    _buttons["planters"][nectar] = tog
+    tog:SetState(true)
+end
 
--- _buttons["planters"]["priority"] = planters:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
---     kocmoc.planters.priority = presetName
--- end)
+_buttons["planters"]["priority"] = planters:CreateDropdown("Nectar Priority Presets", (function()local a = {}; for i, _ in pairs(nectarprioritypresets) do table.insert(a, i) end; return a end)(), function(presetName)
+    kocmoc.planters.priority = presetName
+end)
 local farmsettings = setttab:CreateSection("Autofarm Settings")
 _buttons["convertballoons"] = farmsettings:CreateToggle("Convert Hive Balloon",nil, function(State) kocmoc.toggles.convertballoons = State end)
 _buttons["donotfarmtokens"] = farmsettings:CreateToggle("Don't Farm Tokens",nil, function(State) kocmoc.toggles.donotfarmtokens = State end)
@@ -1212,13 +1303,15 @@ _buttons["tptonpc"] = aqs:CreateToggle("Teleport To NPC", nil, function(State) k
 _buttons["boosting"] = {}
 local aqs = setttab:CreateSection("Auto-Boosting")
 _buttons["boosting"]["lockfield"] = aqs:CreateToggle("Lock Field", nil, function(State) kocmoc.toggles.boosting.lockfield = State end):AddToolTip("Will not perform any other activity while boosting. Only collecting & converting")
-_buttons["boosting"]["glitterrefresh"] = aqs:CreateToggle("Use Glitter to Refresh", nil, function(State) kocmoc.toggles.boosting.glitterefresh = State end):AddToolTip("Will attempt to use glitter to refresh your boost just before it ends")
+_buttons["boosting"]["glitterrefresh"] = aqs:CreateToggle("Use Glitter to Refresh", nil, function(State) kocmoc.toggles.boosting.glitterrefresh = State end):AddToolTip("Will attempt to use glitter to refresh your boost just before it ends")
 _buttons["boosting"]["jellybeans"] = aqs:CreateToggle("Use Jellybeans", nil, function(State) kocmoc.toggles.boosting.jellybeans = State end):AddToolTip("Only uses jellybeans if you have more than 85")
 _buttons["boosting"]["increaseballooncap"] = aqs:CreateToggle("Multiply Balloon Cap", nil, function(State) kocmoc.toggles.boosting.increaseballooncap = State end):AddToolTip("Multiplies \"Convert Balloon At\" by the level of your field boost")
 
 
-local aqs = setttab:CreateSection("Legit Mode")
+local aqs = setttab:CreateSection("Exploit")
 _buttons["legit"] = aqs:CreateToggle("Legit Mode", nil, function(State) kocmoc.toggles.legit = State end)
+-- THIS OPTION REQUIRES A LVL 8 EXPLOIT (require must return the actual script module.. etc)
+_buttons["expsamescriptenv"] = aqs:CreateToggle("Exploit has low level script access?", nil, function(State) kocmoc.toggles.expsamescriptenv = State end)
 
 task.spawn(function() while task.wait() do
     if kocmoc.toggles.autofarm then
@@ -1228,7 +1321,11 @@ task.spawn(function() while task.wait() do
     end
 end end)
 
-workspace.Particles.ChildAdded:Connect(function(v)
+customChildAdded(workspace.Particles, function(instance)
+    local v = instance
+    if string.find(instance.Name, "Vicious") then
+        temptable.detected.vicious = true
+    end
     if temptable.started.planters or temptable.started.monsters then return end
     if not temptable.started.vicious and not temptable.started.ant then
         if v.Name == "WarningDisk" and not temptable.started.vicious and kocmoc.toggles.autofarm and not temptable.started.ant and kocmoc.toggles.farmcoco and (v.Position-api.humanoidrootpart().Position).magnitude < temptable.magnitude and not temptable.converting then
@@ -1242,11 +1339,15 @@ workspace.Particles.ChildAdded:Connect(function(v)
             end
         end
     end
+end, function(instance)
+    if string.find(instance.Name, "Vicious") then
+        temptable.detected.vicious = false
+    end
 end)
 
 
 local cccinterval = 15*60
-local ccccounter = tick() - cccinterval
+local nextmobruntz = tick() + cccinterval
 local doBPChecks = function()
     if kocmoc.toggles.boosting.lockfield then
         if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
@@ -1266,13 +1367,14 @@ local doBPChecks = function()
     while waitingForMain do task.wait() end
 
     if tonumber(kocmoc.vars.convertat) < 1 or kocmoc.toggles.autokillmobs then 
+        local t = tick()
         if temptable.act >= kocmoc.vars.monstertimer then
             temptable.started.monsters = true
             temptable.act = 0
             killmobs() 
             temptable.started.monsters = false
-        elseif ccccounter > cccinterval then
-            ccccounter -= cccinterval * math.floor(ccccounter / cccinterval)
+        elseif t > nextmobruntz then
+            nextmobruntz = t + cccinterval
             temptable.started.monsters = true
             temptable.act = 0
             killmobs()
@@ -1350,7 +1452,7 @@ task.spawn(function() while task.wait() do
                             local npcconsidered = false
                             for npc, considered in pairs(kocmoc.vars.npcprefer) do
                                 if not considered then continue end
-                                if string.match(v.Parent.Parent.TitleBarBG.TitleBar.Text, npc) then
+                                if string.match(v.Parent.Parent.TitleBarBG.TitleBar.Text, npc) and not string.match(v.Parent.Parent.TitleBarBG.TitleBar.Text, "Snow Machine") then
                                     npcconsidered = true
                                     break
                                 end
@@ -1359,7 +1461,7 @@ task.spawn(function() while task.wait() do
                             if not string.find(v.Text, "Puffshroom") then
                                 local pollentypes = {'White Pollen', "Red Pollen", "Blue Pollen", "Blue Flowers", "Red Flowers", "White Flowers"}
                                 local text = v.Text
-                                if api.returnvalue(fieldstable, text) and string.find(text, "Collect") and string.find(text, "Pollen from") and not string.find(text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
+                                if api.returnvalue(fieldstable, text) and string.find(text, "Collect") and (string.find(text, "Pollen from") or string.find(text, "Goo from")) and not string.find(text, "Complete!") and not api.findvalue(kocmoc.blacklistedfields, api.returnvalue(fieldstable, text)) then
                                     local d = api.returnvalue(fieldstable, text)
                                     fieldselected = workspace.FlowerZones[d]
                                     if table.find(temptable.redfields, d) then
@@ -1440,7 +1542,7 @@ task.spawn(function() while task.wait() do
                 statsget()["SessionAccessories"]["Hat"] = mask
             end
 
-            if kocmoc.toggles.boosting.glitterefresh then
+            if kocmoc.toggles.boosting.glitterrefresh then
                 if get_buff_combo(kocmoc.vars.field.." Boost") then
                     -- attempt to glitter field if timer < 1.5 min
                     if get_buff_active_duration(kocmoc.vars.field.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
@@ -1582,13 +1684,13 @@ task.spawn(function()
                             end)
                             repeat
                                 task.wait()
-                                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                                game.Players.LocalPlayer.Character:WaitForChild("Humanoid"):MoveTo(v.Position)
                             until (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude < 3 or timeout
                             if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
                                 api.tween(nil, CFrame.new(v.Position)) task.wait(1)
                                 api.tween(nil, CFrame.new(v.Position)) task.wait(.5)
                             else
-                                game.Players.LocalPlayer.Character.Humanoid:MoveTo(v.Position)
+                                game.Players.LocalPlayer.Character:WaitForChild("Humanoid"):MoveTo(v.Position)
                                 task.wait(3)
                                 if (game.Players.LocalPlayer.Character.PrimaryPart.Position - v.Position).Magnitude > 30 then
                                     api.tween(nil, CFrame.new(v.Position)) task.wait(1)
@@ -1728,16 +1830,6 @@ workspace.Sprouts.ChildRemoved:Connect(function(child)
     end
 end)
 
-workspace.Particles.ChildAdded:Connect(function(instance)
-    if string.find(instance.Name, "Vicious") then
-        temptable.detected.vicious = true
-    end
-end)
-workspace.Particles.ChildRemoved:Connect(function(instance)
-    if string.find(instance.Name, "Vicious") then
-        temptable.detected.vicious = false
-    end
-end)
 workspace.NPCBees.ChildAdded:Connect(function(v)
     if v.Name == "Windy" then
         task.wait(3) temptable.windy = v temptable.detected.windy = true
@@ -1751,7 +1843,6 @@ end)
 
 game:GetService("RunService").RenderStepped:Connect(function(step)
     temptable.runningfor += step
-    ccccounter += step
 
     -- local gold_balloon = nil
     -- for _, b in pairs(workspace.Balloons.FieldBalloons:GetChildren()) do
@@ -1960,23 +2051,37 @@ if _counter >= 1 then
 end
 end)
 
+local floatY
 game:GetService('RunService').Heartbeat:Connect(function()
     for i, v in pairs(game.Players.LocalPlayer.PlayerGui.ScreenGui:WaitForChild("MinigameLayer"):GetChildren()) do for k, q in pairs(v:WaitForChild("GuiGrid"):GetDescendants()) do if q.Name == "ObjContent" or q.Name == "ObjImage" then q.Visible = true end end end
-    if temptable.float then game.Players.LocalPlayer.Character.Humanoid.BodyTypeScale.Value = 0 floatpad.CanCollide = true floatpad.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y-3.75, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z) else floatpad.CanCollide = false end
-
+    
     if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+        -- if temptable.float then
+        --     if not floatY then
+        --         floatY = game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Y
+        --     end
+        --     game.Players.LocalPlayer.Character.Humanoid.BodyTypeScale.Value = 0 floatpad.CanCollide = true floatpad.CFrame = CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position.X, floatY-3.5, game.Players.LocalPlayer.Character.HumanoidRootPart.Position.Z)
+        -- else
+        --     floatY = nil
+        --     floatpad.CanCollide = false
+        -- end
+        
         if kocmoc.toggles.loopspeed then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = kocmoc.vars.walkspeed end
         if kocmoc.toggles.loopjump then game.Players.LocalPlayer.Character.Humanoid.JumpPower = kocmoc.vars.jumppower end
     end
     if kocmoc.toggles.autoquest then 
         local NPC = game:GetService("Players").LocalPlayer.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("NPC")
         if not NPC.Visible then return end
-        local p = NPC.ButtonOverlay
-        local x, y = p.AbsolutePosition.X + 50, p.AbsolutePosition.Y + 100
-        x, y = math.floor(x), math.floor(y)
+        if kocmoc.toggles.expsamescriptenv then
+            firesignal(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.NPC.ButtonOverlay.MouseButton1Click)
+        else
+            local p = NPC.ButtonOverlay
+            local x, y = p.AbsolutePosition.X + 50, p.AbsolutePosition.Y + 100
+            x, y = math.floor(x), math.floor(y)
 
-        game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, true, game, 1)
-        game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, false, game, 1)
+            game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, true, game, 1)
+            game:GetService("VirtualInputManager"):SendMouseButtonEvent(x, y, 0, false, game, 1)
+        end
     end
 end)
 
@@ -2048,7 +2153,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
         "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autosnowbear", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
-            "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit"}) do
+            "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit", "expsamescriptenv"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
 
@@ -2056,6 +2161,8 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         _buttons["dispense"][dispense]:SetState(kocmoc.dispensesettings[dispense])
     end
 
+
+    -- SOLARA FIX
     for _, nectar in pairs(allnectars) do
         _buttons["planters"][nectar]:SetState(kocmoc.planters.farmnectars[nectar])
     end
@@ -2106,5 +2213,15 @@ if workspace.Leaderboards:FindFirstChild("SnowbearKills") then for _, part in pa
 for _, part in pairs(workspace:FindFirstChild("FieldDecos"):GetDescendants()) do _hidePart(part) end
 for _, part in pairs(workspace:FindFirstChild("Decorations"):GetDescendants()) do if part:IsA("BasePart") and (part.Parent.Name == "Bush" or part.Parent.Name == "Blue Flower" or part.Parent.Name == "Mushroom") then part.CanCollide = false part.Transparency = part.Transparency < 0.5 and 0.5 or part.Transparency end end
 -- before here
+
+do
+    ramp = Instance.new("Part")
+    ramp.Anchored = true
+    ramp.Shape = Enum.PartType.Wedge
+    ramp.CFrame = CFrame.new(Vector3.new(290, 103, -20)) * CFrame.Angles(0, -math.rad(90), 0)
+    ramp.Size = Vector3.new(25, 8, 25)
+    ramp.Parent = workspace
+    ramp.Transparency = 1
+end
 
 if shared.autoload then if isfile("kocmoc/BSS_"..shared.autoload..".json") then load_config(shared.autoload) end end
