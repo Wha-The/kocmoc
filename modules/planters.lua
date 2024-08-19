@@ -55,6 +55,9 @@ local GetPlanterData = require(game.ReplicatedStorage.PlanterTypes).Get
 local getupvalues = debug.getupvalues or getupvalues
 
 local function compileactiveplanters()
+    if shared.kocmoc.toggles.expsamescriptenv then
+        return getupvalues(require(game:GetService("ReplicatedStorage").LocalPlanters).LoadPlanter)[4]
+    end
     local t = workspace.Planters:GetChildren()
     local planters = {}
 
