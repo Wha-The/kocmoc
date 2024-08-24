@@ -1432,7 +1432,7 @@ task.spawn(function() while task.wait() do
             local s = get_hive_balloon_size()
             local cap = kocmoc.vars.convertatballoon
             if kocmoc.toggles.boosting.increaseballooncap then
-                cap *= (2.5)^(get_buff_combo(kocmoc.vars.field.." Boost") or 0) -- 1x field boost: 2x cap, 2x field boost: 4x cap, etc
+                cap *= (2.1)^(get_buff_combo(kocmoc.vars.field.." Boost") or 0) -- 1x field boost: 2x cap, 2x field boost: 4x cap, etc
             end
             if s and s > cap then
                 pollenpercentage = 100
@@ -1587,6 +1587,8 @@ task.spawn(function() while task.wait() do
                                 addToQueue("kill_mondo", function()
                                     if not workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then return end
                                     if workspace.Monsters["Mondo Chick (Lvl 8)"]:GetAttribute("Done") then return end
+                                    routeToField("Mountain Top Field")
+
                                     workspace.Monsters["Mondo Chick (Lvl 8)"]:SetAttribute("Done", true)
                                     temptable.started.mondo = true
                                     local timeout = tick() + 45
@@ -1609,6 +1611,7 @@ task.spawn(function() while task.wait() do
                         if workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then
                             addToQueue("kill_mondo", function()
                                 if not workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then return end
+                                routeToField("Mountain Top Field")
                                 temptable.started.mondo = true
                                 while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
                                     workspace.Map.Ground.HighBlock.CanCollide = false 
