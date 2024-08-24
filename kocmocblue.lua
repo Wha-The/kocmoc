@@ -42,7 +42,7 @@
 
 shared.autoload = "afk"
 shared.no_filesystem = false
-shared.lightweight = true -- nothing external installed. this option does nothing but forcibly change the two options below
+shared.lightweight = false -- nothing external installed. this option does nothing but forcibly change the two options below
 shared.no_fs_proxy = false--                                  or shared.lightweight
 shared.no_AHK = false               or shared.no_fs_proxy   or shared.lightweight
 
@@ -314,6 +314,7 @@ kocmoc = {
         farmflame = false,
         farmclouds = false,
         killmondo = false,
+        touchmondo = false,
         killvicious = false,
         loopspeed = false,
         loopjump = false,
@@ -387,6 +388,8 @@ kocmoc = {
     },
 }
 shared.kocmoc = kocmoc
+shared.temptable = temptable
+shared.queued = queued
 -- SOLARA FIX
 for _, nectar in pairs(allnectars) do kocmoc.planters.farmnectars[nectar] = true end
 local function addToQueue(id, fn, options)
@@ -408,7 +411,7 @@ local STATSCACHE = table.clone(statstable)
 game.ReplicatedStorage.Events.ServerSystemEvent.OnClientEvent:Connect(function(k, t)
     if k == "CacheReset" then
         STATSCACHE = t
-        warn("stats have been refreshed from server")
+        print("stats have been refreshed from server")
     end
 end)
 
@@ -1185,6 +1188,7 @@ mobkill:CreateToggle("Train Snail", nil, function(State)
     end
 end)
 _buttons["killmondo"] = mobkill:CreateToggle("Kill Mondo", nil, function(State) kocmoc.toggles.killmondo = State end)
+_buttons["touchmondo"] = mobkill:CreateToggle("Touch Mondo (kill for 30s)", nil, function(State) kocmoc.toggles.touchmondo = State end)
 _buttons["killvicious"] = mobkill:CreateToggle("Kill Vicious", nil, function(State) kocmoc.toggles.killvicious = State end)
 _buttons["killwindy"] = mobkill:CreateToggle("Kill Windy", nil, function(State) kocmoc.toggles.killwindy = State end)
 _buttons["autokillmobs"] = mobkill:CreateToggle("Auto Kill Mobs", nil, function(State) kocmoc.toggles.autokillmobs = State end):AddToolTip("Kills mobs after x pollen converting")
@@ -1239,8 +1243,11 @@ extras:CreateButton("Boost FPS", function()
         end
     end
 end)
-extras:CreateTextBox("Glider Speed", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Speed = Value setupvalue(st, st[1]'Glider', glidersTable) end)
-extras:CreateTextBox("Glider Float", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Float = Value setupvalue(st, st[1]'Glider', glidersTable) end)
+extras:CreateTextBox("Glider Speed", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Speed = Value end)
+extras:CreateTextBox("Glider Float", "", true, function(Value) local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Float = Value end)
+extras:CreateButton("Double Glider Speed", function()
+    local StatCache = require(game.ReplicatedStorage.ClientStatCache) local stats = StatCache:Get() stats.EquippedParachute = "Glider" local module = require(game:GetService("ReplicatedStorage").Parachutes) local st = module.GetStat local glidersTable = getupvalues(st) glidersTable[1]["Glider"].Speed *= 2;glidersTable[1]["Glider"].Float *= 2
+end)
 extras:CreateButton("Invisibility", function(State) api.teleport(CFrame.new(0,0,0)) wait(1) if game.Players.LocalPlayer.Character:FindFirstChild('LowerTorso') then Root = game.Players.LocalPlayer.Character.LowerTorso.Root:Clone() game.Players.LocalPlayer.Character.LowerTorso.Root:Destroy() Root.Parent = game.Players.LocalPlayer.Character.LowerTorso api.teleport(game:GetService("Players").LocalPlayer.SpawnPos.Value) end end)
 extras:CreateToggle("Float", nil, function(State) temptable.float = State end)
 
@@ -1284,7 +1291,7 @@ kocmocs:CreateTextBox("Config Name", 'ex: stumpconfig', false, function(Value) t
 local load_config
 kocmocs:CreateButton("Load Config", function() load_config(temptable.configname) end)
 kocmocs:CreateButton("Save Config", function() writefile("kocmoc/BSS_"..temptable.configname..".json", HttpService:JSONEncode(kocmoc)) end)
-kocmocs:CreateButton("Reset Config", function() kocmoc = defaultkocmoc; load_config() end)
+kocmocs:CreateButton("Reset Config", function() kocmoc = defaultkocmoc; shared.kocmoc = kocmoc; load_config() end)
 local fieldsettings = setttab:CreateSection("Fields Settings")
 fieldsettings:CreateDropdown("Best White Field", temptable.whitefields, function(Option) kocmoc.bestfields.white = Option end)
 fieldsettings:CreateDropdown("Best Red Field", temptable.redfields, function(Option) kocmoc.bestfields.red = Option end)
@@ -1324,6 +1331,7 @@ end end)
 customChildAdded(workspace.Particles, function(instance)
     local v = instance
     if string.find(instance.Name, "Vicious") then
+        print("Vicious bee detected! Field: ", find_field(instance.Position))
         temptable.detected.vicious = true
     end
     if temptable.started.planters or temptable.started.monsters then return end
@@ -1359,6 +1367,7 @@ local doBPChecks = function()
     local waitingForMain = true
     MainThread.resolve(function()
         for id, fn in pairs(queued) do
+            print("Resolving queued task: ", id)
             fn()
             queued[id] = nil
         end
@@ -1396,6 +1405,13 @@ task.spawn(function() while task.wait() do
             local pollencount = game.Players.LocalPlayer.CoreStats.Pollen.Value
             
             local pollenpercentage = pollencount/maxpollen*100
+            
+            Pipes.toAHK({
+                Type = "update_backpack",
+                Percent = pollenpercentage,
+            })
+
+
             if get_buff_combo(kocmoc.vars.field.." Boost") then
                 if pollenpercentage >= 100 then
                     convert_all()
@@ -1416,7 +1432,7 @@ task.spawn(function() while task.wait() do
             local s = get_hive_balloon_size()
             local cap = kocmoc.vars.convertatballoon
             if kocmoc.toggles.boosting.increaseballooncap then
-                cap *= (1 + (get_buff_combo(kocmoc.vars.field.." Boost") or 0))
+                cap *= (2.5)^(get_buff_combo(kocmoc.vars.field.." Boost") or 0) -- 1x field boost: 2x cap, 2x field boost: 4x cap, etc
             end
             if s and s > cap then
                 pollenpercentage = 100
@@ -1563,22 +1579,54 @@ task.spawn(function() while task.wait() do
                     temptable.farm_tokens = true
                     if kocmoc.toggles.autosprinkler then makesprinklers() end
                 else
-                    if kocmoc.toggles.killmondo then
-                        while kocmoc.toggles.killmondo and workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") and not temptable.started.vicious and not temptable.started.monsters do
-                            temptable.started.mondo = true
-                            while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
-                                workspace.Map.Ground.HighBlock.CanCollide = false 
-                                mondopition = workspace.Monsters["Mondo Chick (Lvl 8)"].Head.Position
-                                api.tween(nil, CFrame.new(mondopition.x, mondopition.Y - 52, mondopition.z))
-                                task.wait(1)
-                                temptable.float = true
+                    if kocmoc.toggles.touchmondo then
+                        -- same version as killmondo, but only kill for 45 seconds, then mark attribute "Done" on mondo
+                        if workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then
+                            local mondo = workspace.Monsters["Mondo Chick (Lvl 8)"]
+                            if not mondo:GetAttribute("Done") then
+                                addToQueue("kill_mondo", function()
+                                    if not workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then return end
+                                    if workspace.Monsters["Mondo Chick (Lvl 8)"]:GetAttribute("Done") then return end
+                                    workspace.Monsters["Mondo Chick (Lvl 8)"]:SetAttribute("Done", true)
+                                    temptable.started.mondo = true
+                                    local timeout = tick() + 45
+                                    while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") and tick() < timeout do
+                                        workspace.Map.Ground.HighBlock.CanCollide = false 
+                                        mondopition = workspace.Monsters["Mondo Chick (Lvl 8)"].Head.Position
+                                        local cpos = Vector3.new(mondopition.x, mondopition.Y - 52, mondopition.z)
+                                        floatpad.CanCollide = true floatpad.Position = cpos - Vector3.new(0, 3.5, 0)
+                                        api.tween(nil, CFrame.new(cpos))
+                                        task.wait(1)
+                                        temptable.float = true
+                                    end
+                                    floatpad.CanCollide = false
+                                    task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(nil, fieldpos) task.wait(1)
+                                    temptable.started.mondo = false
+                                end)
                             end
-                            task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(nil, CFrame.new(73.2, 176.35, -167)) task.wait(1)
-                            for i = 0, 50 do 
-                                gettoken(CFrame.new(73.2, 176.35, -167).Position) 
-                            end 
-                            api.tween(nil, fieldpos) 
-                            temptable.started.mondo = false
+                        end
+                    elseif kocmoc.toggles.killmondo then
+                        if workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then
+                            addToQueue("kill_mondo", function()
+                                if not workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") then return end
+                                temptable.started.mondo = true
+                                while workspace.Monsters:FindFirstChild("Mondo Chick (Lvl 8)") do
+                                    workspace.Map.Ground.HighBlock.CanCollide = false 
+                                    mondopition = workspace.Monsters["Mondo Chick (Lvl 8)"].Head.Position
+                                    local cpos = Vector3.new(mondopition.x, mondopition.Y - 52, mondopition.z)
+                                    floatpad.CanCollide = true floatpad.Position = cpos - Vector3.new(0, 3.5, 0)
+                                    api.tween(nil, CFrame.new(cpos))
+                                    task.wait(1)
+                                    temptable.float = true
+                                end
+                                floatpad.CanCollide = false
+                                task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(nil, CFrame.new(73.2, 176.35, -167)) task.wait(1)
+                                for i = 0, 50 do 
+                                    gettoken(CFrame.new(73.2, 176.35, -167).Position) 
+                                end 
+                                api.tween(nil, fieldpos) 
+                                temptable.started.mondo = false
+                            end)
                         end
                     end
                     if (fieldposition-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > temptable.magnitude then
@@ -1635,6 +1683,7 @@ task.spawn(function() while task.wait() do
                     if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
                         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                             if v.Name == "Description" then
+                                if not v.Parent then continue end
                                 local npcconsidered = false
                                 for npc, _ in pairs(kocmoc.vars.npcprefer) do
                                     if string.match(v.Parent.Parent.TitleBarBG.TitleBar.Text, npc) then
@@ -1709,7 +1758,7 @@ task.spawn(function()
                         break
                     end
                 end
-                if kocmoc.toggles.legit then
+                if false then-- kocmoc.toggles.legit then
                     local raycastParams = RaycastParams.new()
                     raycastParams.FilterType = Enum.RaycastFilterType.Whitelist
                     raycastParams.FilterDescendantsInstances = {workspace.Gates, workspace["Invisible Walls"], workspace.Map, viciousbee}
@@ -1753,10 +1802,12 @@ task.spawn(function()
                     while kocmoc.toggles.killvicious and temptable.detected.vicious do
                         for i=1, 4 do
                             temptable.float = true
-                            vichumanoid.CFrame = CFrame.new(viciousbee.Position.x, viciousbee.Position.y + 3, viciousbee.Position.z)
+                            vichumanoid.CFrame = CFrame.new(viciousbee.Position.x, viciousbee.Position.y + 8, viciousbee.Position.z)
+                            floatpad.CanCollide = true floatpad.CFrame = CFrame.new(vichumanoid.Position.X, vichumanoid.Position.Y-3.5, vichumanoid.Position.Z)
                             task.wait(.3)
                         end
                     end
+                    floatpad.CanCollide = false temptable.float = false
                 end
                 task.wait(1)
                 Pipes.toAHK({
@@ -1786,7 +1837,7 @@ task.spawn(function() while task.wait() do
                 for i,v in pairs(workspace.Monsters:GetChildren()) do
                     if string.find(v.Name, "Windy") then
                         if v.Name ~= wlvl then
-                            temptable.float = false task.wait(5) for i =1, 5 do gettoken(api.humanoidrootpart().Position) end -- collect tokens :yessir:
+                            temptable.float = false task.wait(5) for i =1, 8 do gettoken(api.humanoidrootpart().Position) end -- collect tokens :yessir:
                             wlvl = v.Name
                         end
                     end
@@ -1794,7 +1845,10 @@ task.spawn(function() while task.wait() do
             end
             if not awb then api.tween(nil,temptable.gacf(temptable.windy, 5)) task.wait(1) awb = true end
             if awb and temptable.windy.Name == "Windy" then
-                api.humanoidrootpart().CFrame = temptable.gacf(temptable.windy, 25) temptable.float = true task.wait()
+                api.humanoidrootpart().CFrame = temptable.gacf(temptable.windy, 25)
+                floatpad.CanCollide = true floatpad.CFrame = CFrame.new(vichumanoid.Position.X, vichumanoid.Position.Y-3.5, vichumanoid.Position.Z)
+                
+                temptable.float = true task.wait()
             end
         end 
         enableall()
@@ -2150,10 +2204,11 @@ end end)
 load_config = function(configname) -- also doubles as a function to refresh all the button states
     if configname then
         kocmoc = HttpService:JSONDecode(readfile("kocmoc/BSS_"..configname..".json"))
+        shared.kocmoc = kocmoc
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
         "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autosnowbear", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
-            "killmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit", "expsamescriptenv"}) do
+            "killmondo", "touchmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit", "expsamescriptenv"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
 
