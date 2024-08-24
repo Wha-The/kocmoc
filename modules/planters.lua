@@ -34,6 +34,54 @@ local PlanterRecommendedFields = {
     }
 }
 
+-- ULTRA OPTIMIZED VERSION FOR BLUE HIVES https://docs.google.com/document/d/1V0U8k_Ha1irNPkr7LIQismElw__GbLEnhcfwyTXEp1w/edit
+-- local PlanterRecommendedFields = {
+--     ["Comforting Nectar"] = {
+--         Pots = {"Blue Clay Planter", "Tacky Planter"},
+--         Fields = {"Pine Tree Forest", "Dandelion Field"},
+--     },
+--     ["Refreshing Nectar"] = {
+--         Pots = {"Pesticide Planter", "Blue Clay Planter"},
+--         Fields = {"Strawberry Field", "Blue Flower Field"},
+--     },
+--     ["Satisfying Nectar"] = {
+--         Pots = {"Tacky Planter"},
+--         Fields = {"Sunflower Field"},
+--     },
+--     ["Motivating Nectar"] = {
+--         Pots = {"Pesticide Planter", "Red Clay Planter"},
+--         Fields = {"Spider Field", "Rose Field"},
+--     },
+--     -- invigorating nectar is not used in the blue hive, this should be off in settings.
+--     ["Invigorating Nectar"] = {
+--         Pots = {"Heat-Treated Planter", "Red Clay Planter", "Pesticide Planter", "Plastic Planter"},
+--         Fields = {"Pepper Patch", "Mountain Top Field", "Cactus Field", "Clover Field"},
+--     }
+-- }
+local PlanterOptions = {
+    ["Comforting Nectar"] = {
+        {{"Hydroponic Planter", "Blue Clay Planter"}, "Pine Tree Forest"},
+        {{"Petal Planter", "Tacky Planter"}, "Dandelion Field"},
+    },
+    ["Refreshing Nectar"] = {
+        {{"Pesticide Planter"}, "Strawberry Field"},
+        {{"Hydroponic Planter", "Blue Clay Planter"}, "Blue Flower Field"},
+    },
+    ["Satisfying Nectar"] = {
+        {{"Tacky Planter"}, "Sunflower Field"},
+    },
+    ["Motivating Nectar"] = {
+        {{"Pesticide Planter"}, "Spider Field"},
+        {{"Heat-Treated Planter", "Red Clay Planter"}, "Rose Field"},
+    },
+    ["Invigorating Nectar"] = { -- should never be used
+        {{"Heat-Treated Planter"}, "Pepper Patch"},
+        {{"Red Clay Planter"}, "Mountain Top Field"},
+        {{"Plastic Planter"}, "Clover Field"},
+    }
+}
+
+
 local ColoredPlanters = {
     ["Heat-Treated Planter"] = "Red",
     ["Red Clay Planter"] = "Red",
@@ -113,6 +161,7 @@ local function compile_planters()
                 FieldName = string.gsub(string.gsub(string.gsub(find_field(v.PotModel.Soil.Position), " Patch", ""), " Forest", ""), " Field", ""),
                 NectarType = string.gsub(nectar_type, " Nectar", ""),
                 EstimatedPlantedDuration = math.round(v.GrowthPercent * GetPlanterData(v.Type).MaxGrowth),
+                EstimatedDurationLeft = math.round((1 - v.GrowthPercent) * GetPlanterData(v.Type).MaxGrowth),
             })
         end
     end
@@ -195,18 +244,24 @@ local function place_new_planters()
     end
 
     -- Load Planter Degration File
-    local LastCollectTimes = HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters"))
-
+    local success, LastCollectTimes = pcall(function() return HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters")) end)
+    if not success then LastCollectTimes = {} end
     -- go plant
     local planted = 0
     for _, nectar in pairs(nectars_needed) do
         if total >= 3 then break end
 
-        local field do
+        local field, pot do
+            -- local available_fields = {}
+            -- for _, _f in pairs(PlanterRecommendedFields[nectar].Fields) do
+            --     if not table.find(occupied_fields, _f) then
+            --         table.insert(available_fields, _f)
+            --     end
+            -- end
             local available_fields = {}
-            for _, _f in pairs(PlanterRecommendedFields[nectar].Fields) do
-                if not table.find(occupied_fields, _f) then
-                    table.insert(available_fields, _f)
+            for _, option in PlanterOptions[nectar] do
+                if not table.find(occupied_fields, option[2]) then
+                    table.insert(available_fields, option[2])
                 end
             end
             
@@ -249,35 +304,83 @@ local function place_new_planters()
             end
         end
 
-        local pot do
-            for _, _p in pairs(PlanterRecommendedFields[nectar].Pots) do
-                pot = _p
+        -- local pot do
+        --     for _, _p in pairs(PlanterRecommendedFields[nectar].Pots) do
+        --         pot = _p
 
-                -- if the pot is colored, check if the field matches that color. If it doesn't, use a different pot.
-                if ColoredPlanters[pot] then
-                    if workspace.FlowerZones:FindFirstChild(field) and workspace.FlowerZones[field]:FindFirstChild("ColorGroup") then
-                        if workspace.FlowerZones[field]["ColorGroup"].Value ~= ColoredPlanters[pot] then
+        --         -- if the pot is colored, check if the field matches that color. If it doesn't, use a different pot.
+        --         if ColoredPlanters[pot] then
+        --             if workspace.FlowerZones:FindFirstChild(field) and workspace.FlowerZones[field]:FindFirstChild("ColorGroup") then
+        --                 if string.lower(workspace.FlowerZones[field]["ColorGroup"].Value) ~= string.lower(ColoredPlanters[pot]) then
+        --                     continue
+        --                 end
+        --             end
+        --         end
+
+        --         -- check if the player owns this pot
+        --         local potId = string.gsub(pot, " Planter", "Planter")
+        --         if not statsget().Eggs[potId] or statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
+        --             continue
+        --         end
+        --         if not table.find(planters_in_use, pot) then
+        --             break
+        --         end
+                
+        --     end
+        --     if not pot then
+        --         pot = "Paper Planter"
+        --     else
+        --         table.insert(planters_in_use, pot)
+        --     end
+        -- end
+        local function determine_pot()
+            for optionid, option in PlanterOptions[nectar] do
+                if option[2] == field then
+                    local available_planters = option[1]
+                    for _, _p in pairs(available_planters) do
+                        pot = _p
+        
+                        -- if the pot is colored, check if the field matches that color. If it doesn't, use a different pot.
+                        -- if ColoredPlanters[pot] then
+                        --     if workspace.FlowerZones:FindFirstChild(field) and workspace.FlowerZones[field]:FindFirstChild("ColorGroup") then
+                        --         if string.lower(workspace.FlowerZones[field]["ColorGroup"].Value) ~= string.lower(ColoredPlanters[pot]) then
+                        --             continue
+                        --         end
+                        --     end
+                        -- end
+                        -- EDIT: ALREADY CHECKED BY SPECIFYING PREDEFINED COMBINATIONS
+        
+                        -- check if the player owns this pot
+                        local potId = string.gsub(pot, " Planter", "Planter")
+                        if not statsget().Eggs[potId] or statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
+                            pot = nil
                             continue
                         end
+                        if not table.find(planters_in_use, pot) then
+                            break
+                        end
                     end
-                end
-
-                -- check if the player owns this pot
-                local potId = string.gsub(pot, " Planter", "Planter")
-                if not statsget().Eggs[potId] or statsget().Eggs[potId] <= 0 then -- `statsget` is a global variable
-                    continue
-                end
-                if not table.find(planters_in_use, pot) then
+                    if not pot then
+                        -- pot = "Paper Planter"
+                        -- error: lets check if theres a better field
+                        local nextoption = PlanterOptions[nectar][optionid + 1]
+                        if nextoption then
+                            field = nextoption[2]
+                            return determine_pot()
+                        else
+                            pot = "Paper Planter"
+                        end
+                    else
+                        table.insert(planters_in_use, pot)
+                    end
                     break
                 end
-                
             end
-            if not pot then
-                pot = "Paper Planter"
-            else
-                table.insert(planters_in_use, pot)
-            end
+            return pot
         end
+
+        local pot = determine_pot()
+        -- determine what pot is best for the fieldd
 
         
         -- go to field and plant
@@ -314,7 +417,7 @@ local function collectplanters(force_harvest)
                 end
                 if nectar then
                     -- predict how much nectar harvasting the planter now would give us
-                    local recommended_hover_above = table.find(NectarPriority, nectar) <= 3 and 0.85 or 0.6
+                    local recommended_hover_above = table.find(NectarPriority, nectar) <= 3 and 0.8 or 0.7
                     local nectar_given = v.GrowthPercent * GetPlanterData(v.Type).MaxGrowth * 1.1 -- *1.1 because it's the average and a good assumption.
                     if (get_buff_percentage(nectar) * (24 * 60 * 60) + nectar_given) > ((24 * 60 * 60) * (recommended_hover_above + 0.15)) then
                         should_harvest = true
@@ -331,15 +434,19 @@ local function collectplanters(force_harvest)
             end
             local Soil = v.PotModel.Soil
             task.wait(1)
-            -- send "E"
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-            task.spawn(function()
-                task.wait(.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            end)
-
+            if v.ActorID then
+                game:GetService("ReplicatedStorage").Events.PlanterModelCollect:FireServer(v.ActorID)
+            else
+                -- send "E"
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.spawn(function()
+                    task.wait(.1)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                end)
+            end
             
-            local LastCollectTimes = HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters"))
+            local success, LastCollectTimes = pcall(function() return HttpService:JSONDecode(proxyfileread("kocmoc/planter_degradation.planters")) end)
+            if not success then LastCollectTimes = {} end
             local existing_degradation = 0
             if LastCollectTimes[field] then
                 existing_degradation = (LastCollectTimes[field][1] + LastCollectTimes[field][2]) - workspace.OsTime.Value
