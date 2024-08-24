@@ -9,6 +9,8 @@ Natro Macro is free software: you can redistribute it and/or modify it under the
 Natro Macro is distributed in the hope that it will be useful. This does not give you the right to steal sections from our code, distribute it under your own name, then slander the macro.
 
 You should have received a copy of the license along with Natro Macro. If not, please redownload from an official source.
+
+Credits to Whut
 */
 
 #SingleInstance Force
@@ -687,11 +689,12 @@ Loop
 		last_honey := time
 	}
 	; send report every hour
+
 	if ((time_value = 0) || (last_report && time > last_report + 35980000000))
 	{
-		;SendHourlyReport()
-		;DllCall("GetSystemTimeAsFileTime", "int64p", &time)
-		;last_report := time
+		SendHourlyReport()
+		DllCall("GetSystemTimeAsFileTime", "int64p", &time)
+		last_report := time
 	}
 }
 
@@ -711,8 +714,8 @@ DetectBuffs()
 	global buff_values, buff_characters, buff_bitmaps
 
 	; ; set time value
-	; time_value := (60*A_Min+A_Sec)//6
-	; i := (time_value = 0) ? 600 : time_value
+	time_value := (60*A_Min+A_Sec)//6
+	i := (time_value = 0) ? 600 : time_value
 
 	; ; check roblox window exists
 	; hwnd := GetRobloxHWND()
@@ -957,8 +960,12 @@ DetectBuffs()
 	; ; clean up and return
 	; Gdip_DisposeImage(pBMArea)
 	; return str
-	KOCMOC_SendCommand("send_buffs")
-	return KOCMOC_YieldUntilData("update_buffs")
+	now_buffs := KOCMOC_YieldUntilData("send_buffs", "update_buffs")["Buffs"]
+	for k,v in now_buffs
+	{
+		buff_values[k][i] := v
+	}
+	return now_buffs
 }
 
 KOCMOC_SendCommand(command)
@@ -1019,25 +1026,49 @@ KOCMOC_GetData(command)
 		}
 	}
 	; save json to pipe file
-	FileAppend(Jxon_Dump(obj), pipeFile)
+	success := 0
+	fail := 0
+	while success = 0
+	{
+		try
+		{
+			if FileExist(pipeFile){
+				FileDelete(pipeFile)
+			}
+			FileAppend(Jxon_Dump(obj), pipeFile)
+			success := 1
+		}
+		catch
+		{
+			fail += 1
+			if (fail > 10)
+			{
+				; write warning to log
+				FileAppend("Warning: KOCMOC_GetData failed to write to pipe file after 10 attempts. Command: " command "`n", "KOCMOC.log")
+				fail := 0
+			}
+			Sleep 100
+		}
+	}
 	return ret
 }
 
-KOCMOC_YieldUntilData(command)
+KOCMOC_YieldUntilData(sendcommand, command)
 {
 	; call KOCMOC_GetData until a return value of non-zero is received
 	data := 0
 	i := 0
 	while (data = 0)
 	{
+		KOCMOC_SendCommand(sendcommand)
 		data := KOCMOC_GetData(command)
 		i += 1
-		if (i > 100){
+		if (i > 20){
 			; write warning to log
-			FileAppend("Warning: KOCMOC_YieldUntilData timed out after 100 iterations. Waiting for Command: " command "`n", "KOCMOC.log")
+			FileAppend("Warning: KOCMOC_YieldUntilData timed out after 20 iterations. Send command: " sendcommand " | Waiting for Command: " command "`n", "KOCMOC.log")
 			i := 0
 		}
-		Sleep 100
+		Sleep 300
 	}
 	return data
 }
@@ -1090,25 +1121,26 @@ DetectHoney()
 	; 	if ((v[1] > 2) && (k > current_honey))
 	; 		current_honey := k
 
-	; ; update honey values array and write values to ini
-	; index := (A_Min = "00") ? 60 : Integer(A_Min)
-	; if current_honey
-	; {
-	; 	honey_values[index] := current_honey
-	; 	if (FileExist("statconfig.ini") && IsSet(start_time))
-	; 	{
-	; 		session_time := DateDiff(A_Now, start_time, "S")
-	; 		session_total := current_honey - start_honey
-	; 		try IniWrite FormatNumber(session_total), "statconfig.ini", "Status", "SessionTotalHoney"
-	; 		try IniWrite FormatNumber(session_total*3600/session_time), "statconfig.ini", "Status", "HoneyAverage"
-	; 	}
-	; 	return current_honey
-	; }
-	; else
-	; 	return 0
-	KOCMOC_SendCommand("send_honey")
-	data := KOCMOC_YieldUntilData("update_honey") ; data: {"Honey": int}
-	return data["Honey"]
+	; update honey values array and write values to ini
+	data := KOCMOC_YieldUntilData("send_honey", "update_honey") ; data: {"Honey": int}
+	current_honey := data["Honey"]
+
+	index := (A_Min = "00") ? 60 : Integer(A_Min)
+	if current_honey
+	{
+		honey_values[index] := current_honey
+		if (FileExist("statconfig.ini") && IsSet(start_time))
+		{
+			session_time := DateDiff(A_Now, start_time, "S")
+			session_total := current_honey - start_honey
+			try IniWrite FormatNumber(session_total), "statconfig.ini", "Status", "SessionTotalHoney"
+			try IniWrite FormatNumber(session_total*3600/session_time), "statconfig.ini", "Status", "HoneyAverage"
+		}
+		return current_honey
+	}
+	else
+		return 0
+	
 }
 
 /********************************************************************************************************
@@ -1654,9 +1686,7 @@ SendHourlyReport()
 		, MPlanterHold1, MPlanterHold2, MPlanterHold3
 		, MPlanterSmoking1, MPlanterSmoking2, MPlanterSmoking3
 
-
-	KOCMOC_SendCommand("send_planters")
-	planter_data := KOCMOC_YieldUntilData("update_planters")
+	planter_data := KOCMOC_YieldUntilData("send_planters", "update_planters")
 
 	; Loop 3
 	; {
