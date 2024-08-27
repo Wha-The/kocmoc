@@ -43,8 +43,8 @@
 shared.autoload = "afk"
 shared.no_filesystem = false
 shared.lightweight = false -- nothing external installed. this option does nothing but forcibly change the two options below
-shared.no_fs_proxy = false--                                  or shared.lightweight
-shared.no_AHK = false               or shared.no_fs_proxy   or shared.lightweight
+shared.no_fs_proxy = true--                                  or shared.lightweight
+shared.no_AHK = false                or shared.lightweight
 
 ------------------------------------------------------------------------
 
@@ -499,22 +499,27 @@ end
 
 task.spawn(function()
     while task.wait() do
-        Pipes.processCommands(function(command)
-            if command == "send_honey" then
-                Pipes.toAHK({
-                    Type = "update_honey",
-                    Honey = HoneyStat.Value
-                })
-            elseif command == "send_buffs" then
-                compile_buff_list()
-            elseif command == "send_planters" then
-                compile_planters()
-            elseif command == "ping" then
-                Pipes.toAHK({
-                    Type = "pong",
-                })
-            end
+        local suc, err = pcall(function()
+            Pipes.processCommands(function(command)
+                if command == "send_honey" then
+                    Pipes.toAHK({
+                        Type = "update_honey",
+                        Honey = HoneyStat.Value
+                    })
+                elseif command == "send_buffs" then
+                    compile_buff_list()
+                elseif command == "send_planters" then
+                    compile_planters()
+                elseif command == "ping" then
+                    Pipes.toAHK({
+                        Type = "pong",
+                    })
+                end
+            end)
         end)
+        if not suc then
+            print("Error processing commands: ", err)
+        end
     end
 end)
 
@@ -662,7 +667,7 @@ local function farmant()
     temptable.oldtool = stats['EquippedCollector']
     temptable.oldmask = stats["SessionAccessories"]["Hat"]
     temptable.float = true
-    -- equip_mask("Demon Mask")
+    equip_mask("Demon Mask")
     game.ReplicatedStorage.Events.ItemPackageEvent:InvokeServer("Equip",{["Mute"] = true,["Type"] = "Spark Staff",["Category"] = "Collector"})
     game.ReplicatedStorage.Events.ToyEvent:FireServer("Ant Challenge")
     kocmoc.toggles.autodig = true
@@ -698,7 +703,7 @@ local function farmant()
     })
     -- route BACK
     playRoute("Toys/Free Ant Pass Dispenser", "Dandelion Field")
-    -- equip_mask(temptable.oldmask)
+    equip_mask(temptable.oldmask)
     temptable.started.ant = false
     temptable.float = false
     antpart.CanCollide = false
@@ -1310,6 +1315,7 @@ _buttons["tptonpc"] = aqs:CreateToggle("Teleport To NPC", nil, function(State) k
 _buttons["boosting"] = {}
 local aqs = setttab:CreateSection("Auto-Boosting")
 _buttons["boosting"]["lockfield"] = aqs:CreateToggle("Lock Field", nil, function(State) kocmoc.toggles.boosting.lockfield = State end):AddToolTip("Will not perform any other activity while boosting. Only collecting & converting")
+_buttons["boosting"]["pivottoboosted"] = aqs:CreateToggle("Pivot To Boosted Field", nil, function(State) kocmoc.toggles.boosting.pivottoboosted = State end):AddToolTip("Will pivot to the field the blue field booster boosted (EXCLUDES STUMP)")
 _buttons["boosting"]["glitterrefresh"] = aqs:CreateToggle("Use Glitter to Refresh", nil, function(State) kocmoc.toggles.boosting.glitterrefresh = State end):AddToolTip("Will attempt to use glitter to refresh your boost just before it ends")
 _buttons["boosting"]["jellybeans"] = aqs:CreateToggle("Use Jellybeans", nil, function(State) kocmoc.toggles.boosting.jellybeans = State end):AddToolTip("Only uses jellybeans if you have more than 85")
 _buttons["boosting"]["increaseballooncap"] = aqs:CreateToggle("Multiply Balloon Cap", nil, function(State) kocmoc.toggles.boosting.increaseballooncap = State end):AddToolTip("Multiplies \"Convert Balloon At\" by the level of your field boost")
@@ -1353,12 +1359,28 @@ end, function(instance)
     end
 end)
 
+local function getfield()
+    local kocmocfield = kocmoc.vars.field
+    if kocmoc.toggles.boosting.pivottoboosted then
+        local prio = {"Pine Tree Forest", "Bamboo Field", "Blue Flower Field"}
+        for i, v in pairs(prio) do
+            if get_buff_combo(v.." Boost") then
+                kocmocfield = v
+                break
+            end
+        end 
+    end
+
+    return kocmocfield
+end
+
 
 local cccinterval = 15*60
 local nextmobruntz = tick() + cccinterval
 local doBPChecks = function()
     if kocmoc.toggles.boosting.lockfield then
-        if kocmoc.vars.field and get_buff_combo(kocmoc.vars.field.." Boost") then return end -- boosting ; don't want to waste time
+        local f = getfield()
+        if f and get_buff_combo(f.." Boost") then return end -- boosting ; don't want to waste time
     end
     if kocmoc.toggles.autoquest then makequests() end
     if kocmoc.toggles.autoplanters then collectplanters() end
@@ -1411,8 +1433,10 @@ task.spawn(function() while task.wait() do
                 Percent = pollenpercentage,
             })
 
+            local kocmocfield = getfield()
+            
 
-            if get_buff_combo(kocmoc.vars.field.." Boost") then
+            if get_buff_combo(kocmocfield.." Boost") then
                 if pollenpercentage >= 100 then
                     convert_all()
                     task.wait(3)
@@ -1420,7 +1444,7 @@ task.spawn(function() while task.wait() do
                 end
 
                 if kocmoc.toggles.boosting.jellybeans then
-                    if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                    if find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmocfield then
                         local stats = statsget()
                         if ((workspace.OsTime.Value - stats.PlayerActiveTimes["Jelly Beans"]) > 2*60) and (stats.Eggs.JellyBeans > 85) then
                             game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Jelly Beans"})
@@ -1432,7 +1456,7 @@ task.spawn(function() while task.wait() do
             local s = get_hive_balloon_size()
             local cap = kocmoc.vars.convertatballoon
             if kocmoc.toggles.boosting.increaseballooncap then
-                cap *= (2.1)^(get_buff_combo(kocmoc.vars.field.." Boost") or 0) -- 1x field boost: 2x cap, 2x field boost: 4x cap, etc
+                cap *= (2.1)^(get_buff_combo(kocmocfield.." Boost") or 0) -- 1x field boost: 2x cap, 2x field boost: 4x cap, etc
             end
             if s and s > cap then
                 pollenpercentage = 100
@@ -1457,11 +1481,11 @@ task.spawn(function() while task.wait() do
                 doBPChecks()
             end
 
-            local fieldselected = workspace.FlowerZones[kocmoc.vars.field]
+            local fieldselected = workspace.FlowerZones[kocmocfield]
             local mask = "Diamond Mask"
             local fieldpos = CFrame.new(fieldselected.Position.X, fieldselected.Position.Y+3, fieldselected.Position.Z)
             fieldposition = fieldselected.Position
-            if not get_buff_combo(kocmoc.vars.field.." Boost") then
+            if not get_buff_combo(kocmocfield.." Boost") then
                 if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
                     for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                         if v.Name == "Description" then
@@ -1508,7 +1532,7 @@ task.spawn(function() while task.wait() do
                         end
                     end
                 else
-                    fieldselected = workspace.FlowerZones[kocmoc.vars.field]
+                    fieldselected = workspace.FlowerZones[kocmocfield]
                 end
                 fieldpos = CFrame.new(fieldselected.Position.X, fieldselected.Position.Y+3, fieldselected.Position.Z)
                 fieldposition = fieldselected.Position
@@ -1559,9 +1583,9 @@ task.spawn(function() while task.wait() do
             end
 
             if kocmoc.toggles.boosting.glitterrefresh then
-                if get_buff_combo(kocmoc.vars.field.." Boost") then
+                if get_buff_combo(kocmocfield.." Boost") then
                     -- attempt to glitter field if timer < 1.5 min
-                    if get_buff_active_duration(kocmoc.vars.field.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmoc.vars.field then
+                    if get_buff_active_duration(kocmocfield.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmocfield then
                         local stats = statsget()
                         if ((workspace.OsTime.Value - stats["PlayerActiveTimes"]["Glitter"]) > 15.5*60) and (stats.Eggs.Glitter > 0) then
                             game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glitter"})
@@ -1682,7 +1706,12 @@ task.spawn(function() while task.wait() do
                 temptable.act = temptable.act + 1
                 task.wait(3)
                 doBPChecks()
-                if kocmoc.toggles.autoant and not workspace.Toys["Ant Challenge"].Busy.Value and get_latest_player_stats().Eggs.AntPass > 0 then 
+                local boosting = false
+                if kocmoc.toggles.boosting.lockfield then
+                    local f = getfield()
+                    if f and get_buff_combo(f.." Boost") then boosting = true end -- boosting ; don't want to waste time
+                end
+                if not boosting and kocmoc.toggles.autoant and not workspace.Toys["Ant Challenge"].Busy.Value and get_latest_player_stats().Eggs.AntPass > 0 then 
                     if kocmoc.toggles.autodoquest and game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests.Content:FindFirstChild("Frame") then
                         for i, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.ScreenGui.Menus.Children.Quests:GetDescendants()) do
                             if v.Name == "Description" then
@@ -1705,7 +1734,7 @@ task.spawn(function() while task.wait() do
                     end
                 end
                 if kocmoc.toggles.legit then
-                    routeToField(kocmoc.vars.field)
+                    routeToField(kocmocfield)
                 end
                 Pipes.toAHK({
                     Type = "set_script_status",
@@ -1722,6 +1751,9 @@ task.spawn(function()
             addToQueue("vicious_kill", function()
                 if not temptable.detected.vicious then return end
                 temptable.started.vicious = true
+                temptable.oldmask = statsget()["SessionAccessories"]["Hat"]
+
+                equip_mask("Demon Mask")
                 
                 local vichumanoid = game:GetService("Players").LocalPlayer.Character.HumanoidRootPart
                 for i, v in pairs(workspace.Particles:GetChildren()) do
@@ -1818,6 +1850,7 @@ task.spawn(function()
                     Stat = "Total Vic Kills",
                 })
                 temptable.started.vicious = false
+                equip_mask(temptable.oldmask)
                 enableall()
             end, {ignore_legit = true})
 		end
@@ -2229,7 +2262,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
         button:SetState(kocmoc.vars.npcprefer[npc])
     end
 
-    for _, toggle in pairs({"glitterrefresh", "jellybeans", "increaseballooncap", "lockfield"}) do
+    for _, toggle in pairs({"glitterrefresh", "jellybeans", "increaseballooncap", "lockfield", "pivottoboosted"}) do
         _buttons["boosting"][toggle]:SetState(kocmoc.toggles.boosting[toggle])
     end
 
