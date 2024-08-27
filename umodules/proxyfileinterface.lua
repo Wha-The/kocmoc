@@ -10,17 +10,18 @@ local function communicate(method, path, body)
 		Body = body,
 	})
 	if not success then
-		print("Error communicating with filesystem proxy: "..result)
-		messagebox("Error communicating with filesystem proxy: "..result, "Error", 0) -- i know this hangs the thread
+		-- print("Error communicating with filesystem: "..result)
+		return ""
+		--messagebox("Error communicating with filesystem proxy: "..result, "Error", 0) -- i know this hangs the thread
 	end
 	return result.Body
 end
 
 function proxyfilewrite(file, data)
-	return communicate("POST", "/write?file="..encode(file), data)
+	return communicate("GET", "/write?file="..encode(file).."&data="..encode(data))
 end
 function proxyfileappend(file, data)
-	return communicate("POST", "/append?file="..encode(file), data)
+	return communicate("GET", "/append?file="..encode(file).."&data="..encode(data))
 end
 function proxyfileread(file)
 	return communicate("GET", "/read?file="..encode(file))
@@ -58,7 +59,17 @@ end
 
 if shared.no_filesystem or shared.no_fs_proxy then
 	-- appendfile isn't overwritten all of the time
-    return writefile, function(n, d) return writefile(readfile(n)..d) end, readfile, function(n) return isfile(n) or isfolder(n) end, function()end
+    return writefile, function(n, d) return writefile(readfile(n)..d) end, readfile, function(n)
+		local isFileSuccess, isFile = pcall(isfile, n)
+		if isFileSuccess and isFile then
+			return true
+		end
+		local isFolderSuccess, isFolder = pcall(isfolder, n)
+		if isFolderSuccess then
+			return isFolder
+		end
+	
+	end, function()end
 end
 
 return proxyfilewrite, proxyfileappend, cachewrap(proxyfileread), cachewrap(proxyfileexists), proxywipecache
