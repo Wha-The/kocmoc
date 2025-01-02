@@ -133,7 +133,9 @@ local function playbackRoute(waypoints)
                 task.wait()
                 local lc = game.Players.LocalPlayer.Character:GetPrimaryPartCFrame()
                 game.Players.LocalPlayer.Character.PrimaryPart.CFrame = CFrame.new(lc.Position) * CFrame.Angles(0, Vector3.new(CFrame.new(lc.Position, dest):ToOrientation()).Y ,0)
-                game.Players.LocalPlayer.Character.Humanoid:MoveTo(dest)
+                if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+		        	game.Players.LocalPlayer.Character.Humanoid:MoveTo(dest)
+				end
             until (game.Players.LocalPlayer.Character.PrimaryPart.Position - dest).Magnitude < 5 or timeout
             if timeout then return false end
         elseif command.Command == "Walk" then
@@ -145,7 +147,9 @@ local function playbackRoute(waypoints)
 		    local dest = parseVector3(command.Data.Point)
 		    repeat
 		        task.wait()
-		        game.Players.LocalPlayer.Character.Humanoid:MoveTo(dest)
+				if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+		        	game.Players.LocalPlayer.Character.Humanoid:MoveTo(dest)
+				end
 		    until (game.Players.LocalPlayer.Character.PrimaryPart.Position - dest).Magnitude < 2 or timeout
 		    if timeout then return false end
 	    end
