@@ -3,40 +3,106 @@ import json
 import tornado
 import tornado.ioloop
 import tornado.web
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-class ReadHandler(tornado.web.RequestHandler):
-	def get(self):
-		fname = self.get_argument("file")
-		if ".." in fname: return
-		with open(os.path.join("./workspace", fname), "r") as f:
-			self.write(f.read())
-class WriteHandler(tornado.web.RequestHandler):
-	def get(self):
-		fname = self.get_argument("file")
-		data = self.request.body
-		if ".." in fname: return
-		with open(os.path.join("./workspace", fname), "wb") as f:
-			f.write(data)
-class AppendHandler(tornado.web.RequestHandler):
-	def get(self):
-		fname = self.get_argument("file")
-		data = self.request.body
-		if ".." in fname: return
-		with open(os.path.join("./workspace", fname), "ab") as f:
-			f.write(data)
-class ExistsHandler(tornado.web.RequestHandler):
-	def get(self):
-		fname = self.get_argument("file")
-		if ".." in fname: return
-		self.write(os.path.exists(os.path.join("./workspace", fname)) and "1" or "0")
+from pathlib import Path
+import re
+
+class BaseHandler(tornado.web.RequestHandler):
+    def validate_filename(self, fname):
+        # Sanitize and validate filename
+        if not fname or '..' in fname or '/' in fname or '\\' in fname:
+            raise tornado.web.HTTPError(400, "Invalid filename")
+            
+        # Only allow alphanumeric filenames with basic punctuation
+        if not re.match(r'^[\w\-. ]+$', fname):
+            raise tornado.web.HTTPError(400, "Invalid filename characters")
+            
+        # Resolve the full path and ensure it's within workspace
+        try:
+            workspace = os.path.abspath("./workspace")
+            file_path = os.path.abspath(os.path.join(workspace, fname))
+            if not file_path.startswith(workspace):
+                raise tornado.web.HTTPError(403, "Access denied")
+            return file_path
+        except Exception:
+            raise tornado.web.HTTPError(400, "Invalid path")
+
+class ReadHandler(BaseHandler):
+    def get(self):
+        try:
+            fname = self.get_argument("file")
+            file_path = self.validate_filename(fname)
+            
+            # Limit file size
+            if os.path.getsize(file_path) > 10 * 1024 * 1024:  # 10MB limit
+                raise tornado.web.HTTPError(413, "File too large")
+                
+            with open(file_path, "r") as f:
+                self.write(f.read())
+        except tornado.web.HTTPError:
+            raise
+        except Exception as e:
+            raise tornado.web.HTTPError(500, "Internal server error")
+
+class WriteHandler(BaseHandler):
+    def post(self):
+        try:
+            fname = self.get_argument("file")
+            file_path = self.validate_filename(fname)
+            data = self.request.body
+            
+            # Limit file size
+            if len(data) > 10 * 1024 * 1024:  # 10MB limit
+                raise tornado.web.HTTPError(413, "File too large")
+                
+            with open(file_path, "wb") as f:
+                f.write(data)
+        except tornado.web.HTTPError:
+            raise
+        except Exception as e:
+            raise tornado.web.HTTPError(500, "Internal server error")
+
+class AppendHandler(BaseHandler):
+    def post(self):
+        try:
+            fname = self.get_argument("file")
+            file_path = self.validate_filename(fname)
+            data = self.request.body
+            
+            # Check final file size
+            current_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+            if current_size + len(data) > 10 * 1024 * 1024:  # 10MB limit
+                raise tornado.web.HTTPError(413, "File too large")
+                
+            with open(file_path, "ab") as f:
+                f.write(data)
+        except tornado.web.HTTPError:
+            raise
+        except Exception as e:
+            raise tornado.web.HTTPError(500, "Internal server error")
+
+class ExistsHandler(BaseHandler):
+    def get(self):
+        try:
+            fname = self.get_argument("file")
+            file_path = self.validate_filename(fname)
+            self.write("1" if os.path.exists(file_path) else "0")
+        except tornado.web.HTTPError:
+            raise
+        except Exception as e:
+            raise tornado.web.HTTPError(500, "Internal server error")
+
 def make_app():
-	return tornado.web.Application([
-		(r"/read", ReadHandler),
-		(r"/write", WriteHandler),
-		(r"/append", AppendHandler),
-		(r"/exists", ExistsHandler),
-	])
+    return tornado.web.Application([
+        (r"/read", ReadHandler),
+        (r"/write", WriteHandler),
+        (r"/append", AppendHandler),
+        (r"/exists", ExistsHandler),
+    ])
+
 if __name__ == '__main__':
-	app = make_app()
-	app.listen(22125, "127.0.0.1")
-	tornado.ioloop.IOLoop.current().start()
+    # Ensure workspace directory exists
+    os.makedirs("./workspace", exist_ok=True)
+    
+    app = make_app()
+    app.listen(22125, "127.0.0.1")
+    tornado.ioloop.IOLoop.current().start()
