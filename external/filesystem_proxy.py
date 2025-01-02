@@ -8,18 +8,21 @@ import re
 
 class BaseHandler(tornado.web.RequestHandler):
     def validate_filename(self, fname):
-        # Sanitize and validate filename
-        if not fname or '..' in fname or '/' in fname or '\\' in fname:
+        # Validate filename is not empty
+        if not fname:
             raise tornado.web.HTTPError(400, "Invalid filename")
             
-        # Only allow alphanumeric filenames with basic punctuation
-        if not re.match(r'^[\w\-. ]+$', fname):
-            raise tornado.web.HTTPError(400, "Invalid filename characters")
+        # Prevent path traversal
+        if '..' in fname:
+            raise tornado.web.HTTPError(400, "Path traversal not allowed")
             
         # Resolve the full path and ensure it's within workspace
         try:
             workspace = os.path.abspath("./workspace")
-            file_path = os.path.abspath(os.path.join(workspace, fname))
+            # Allow subdirectories but normalize path
+            norm_fname = os.path.normpath(fname)
+            file_path = os.path.abspath(os.path.join(workspace, norm_fname))
+            
             if not file_path.startswith(workspace):
                 raise tornado.web.HTTPError(403, "Access denied")
             return file_path
@@ -44,11 +47,11 @@ class ReadHandler(BaseHandler):
             raise tornado.web.HTTPError(500, "Internal server error")
 
 class WriteHandler(BaseHandler):
-    def post(self):
+    def get(self):
         try:
             fname = self.get_argument("file")
             file_path = self.validate_filename(fname)
-            data = self.request.body
+            data = self.get_argument("data")
             
             # Limit file size
             if len(data) > 10 * 1024 * 1024:  # 10MB limit
@@ -62,11 +65,11 @@ class WriteHandler(BaseHandler):
             raise tornado.web.HTTPError(500, "Internal server error")
 
 class AppendHandler(BaseHandler):
-    def post(self):
+    def get(self):
         try:
             fname = self.get_argument("file")
             file_path = self.validate_filename(fname)
-            data = self.request.body
+            data = self.get_argument("file")
             
             # Check final file size
             current_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
