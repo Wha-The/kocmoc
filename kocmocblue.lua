@@ -43,8 +43,8 @@
 shared.autoload = "afk"
 shared.no_filesystem = false
 shared.lightweight = false -- nothing external installed. this option does nothing but forcibly change the two options below
-shared.no_fs_proxy = true--                                  or shared.lightweight
-shared.no_AHK = false                or shared.lightweight
+shared.no_fs_proxy = false--                                  or shared.lightweight
+shared.no_AHK = true                or shared.lightweight
 
 ------------------------------------------------------------------------
 
@@ -710,6 +710,105 @@ local function farmant()
     floatpad.CanCollide = false
 end
 
+
+
+
+
+local rotationalForce
+local function characterAdded(character)
+	rotationalForce = Instance.new("AlignOrientation")
+	rotationalForce.RigidityEnabled = true
+	rotationalForce.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	rotationalForce.Attachment0 = character.PrimaryPart:WaitForChild("RootRigAttachment")
+	rotationalForce.Parent = character.PrimaryPart
+    rotationalForce.Enabled = false
+end
+if game.Players.LocalPlayer.Character then characterAdded(game.Players.LocalPlayer.Character) end
+game.Players.LocalPlayer.CharacterAdded:Connect(characterAdded)
+
+local function shortestDistance(lineStart, lineDir, point)
+    local v = point - lineStart
+    local lenSq = lineDir:Dot(lineDir)
+    local t = lineDir:Dot(v) / lenSq
+    local nearestPoint = lineStart + lineDir * t
+    return (point - nearestPoint).Magnitude
+end
+local BuffTile = require(game:GetService("ReplicatedStorage"):WaitForChild("Gui"):WaitForChild("TileDisplay"):WaitForChild("BuffTile"))
+
+local tidalsurge_rotate = function()
+    local character = game.Players.LocalPlayer and game.Players.LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    if not character or not humanoid then return end
+    local is_surging = select(1, BuffTile.GetBuffInfo("Tidal Surge"))
+    if is_surging then
+        humanoid.AutoRotate = false
+        rotationalForce.Enabled = true
+        
+        -- we can manually rotate now
+        -- scan a full 2pi rotations around the player, creating a ray every iteration and checking how many balloons is within [THRESHOLD] distance of the ray.
+        
+        local valid_balloons = {}
+        for i, v in pairs(workspace.Balloons.FieldBalloons:GetChildren()) do
+            if v:FindFirstChild("BalloonRoot") and v:FindFirstChild("PlayerName") then
+                if v:FindFirstChild("PlayerName").Value == game.Players.LocalPlayer.Name then
+                    if tonumber((v.BalloonRoot.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).magnitude) < temptable.magnitude/1.4 then
+                        table.insert(valid_balloons, v.BalloonRoot.Position)
+                    end
+                end
+            end
+        end
+        
+        local theta = 0 
+        local two_pi = 2*math.pi
+        local delta_theta = two_pi / 16
+        local results = {}
+        while theta < two_pi do
+            local direction_vector = Vector3.new(math.sin(theta), 0, math.cos(theta))
+            local score = 0
+            for _, balloonpos in pairs(valid_balloons) do
+                local dist = shortestDistance(
+                    character.PrimaryPart.Position,
+                    direction_vector,
+                    balloonpos
+                )
+
+                if dist < 15 then
+                    score += 1
+                end
+            end
+
+            results[theta] = score
+            theta += delta_theta
+        end
+
+        -- find the highest score, and face that direction.
+        local highestscore = 0
+        local highest_score_theta = 0
+        for theta, score in results do
+            if score > highestscore then
+                highestscore = score
+                highest_score_theta = theta
+            end
+        end
+        if highestscore > 0 then
+            local pos = character:GetPrimaryPartCFrame().Position
+            rotationalForce.CFrame = 
+                CFrame.new(pos, pos + Vector3.new(math.sin(highest_score_theta), 0, math.cos(highest_score_theta)))
+            print("theta = ", highest_score_theta * (180/math.pi))
+            print("score = ", highestscore)
+        else
+            print("highest score = 0! no balloons!!!")
+        end
+    else
+        humanoid.AutoRotate = true
+        rotationalForce.Enabled = false
+    end
+end
+
+game:GetService("RunService").RenderStepped:Connect(function(dt)
+    tidalsurge_rotate()
+end)
+
 local attempt_snowbear = function()
     temptable.oldmask = get_latest_player_stats()["SessionAccessories"]["Hat"]
     equip_mask("Demon Mask")
@@ -1181,6 +1280,8 @@ _buttons["autoquest"] = farmt:CreateToggle("Auto Accept/Confirm Quests ⚙", nil
 _buttons["autodoquest"] = farmt:CreateToggle("Auto Do Quests ⚙", nil, function(State) kocmoc.toggles.autodoquest = State end)
 _buttons["automask"] = farmt:CreateToggle("Auto Mask", nil, function(State) kocmoc.toggles.automask = State end):AddToolTip("Equips the right mask for the field you're farming in (only when autofarm is on). Useful for quests.")
 _buttons["honeystorm"] = farmt:CreateToggle("Auto Honeystorm", nil, function(State) kocmoc.toggles.honeystorm = State end)
+_buttons["spamglitter"] = farmt:CreateToggle("Keep spaming Glitter!", nil, function(State) kocmoc.toggles.spamglitter = State end):AddToolTip("Spams GLITTER!")
+
 
 local mobkill = combtab:CreateSection("Combat")
 mobkill:CreateToggle("Train Crab", nil, function(State) if State then api.humanoidrootpart().CFrame = CFrame.new(-307.52117919922, 107.91863250732, 467.86791992188) end end)
@@ -1593,6 +1694,14 @@ task.spawn(function() while task.wait() do
                     end
                 end
             end
+            if kocmoc.toggles.spamglitter then
+                if get_buff_active_duration(kocmocfield.." Boost") > (13.5 * 60) and find_field(game.Players.LocalPlayer.Character.PrimaryPart.Position) == kocmocfield then
+                    local stats = statsget()
+                    if ((workspace.OsTime.Value - stats["PlayerActiveTimes"]["Glitter"]) > 15.5*60) and (stats.Eggs.Glitter > 0) then
+                        game:GetService("ReplicatedStorage").Events.PlayerActivesCommand:FireServer({["Name"] = "Glitter"})
+                    end
+                end
+            end
             if tonumber(kocmoc.vars.convertat) < 1 or tonumber(pollenpercentage) < tonumber(kocmoc.vars.convertat) then
                 if not temptable.farm_tokens then
                     routeToField(find_field(fieldposition))
@@ -1613,6 +1722,9 @@ task.spawn(function() while task.wait() do
                                     if workspace.Monsters["Mondo Chick (Lvl 8)"]:GetAttribute("Done") then return end
                                     routeToField("Mountain Top Field")
 
+                                    temptable.oldmask = statsget()["SessionAccessories"]["Hat"]
+                                    equip_mask("Demon Mask")
+
                                     workspace.Monsters["Mondo Chick (Lvl 8)"]:SetAttribute("Done", true)
                                     temptable.started.mondo = true
                                     local timeout = tick() + 45
@@ -1626,6 +1738,7 @@ task.spawn(function() while task.wait() do
                                         temptable.float = true
                                     end
                                     floatpad.CanCollide = false
+                                    equip_mask(temptable.oldmask)
                                     task.wait(.5) workspace.Map.Ground.HighBlock.CanCollide = true temptable.float = false api.tween(nil, fieldpos) task.wait(1)
                                     temptable.started.mondo = false
                                 end)
@@ -2244,7 +2357,7 @@ load_config = function(configname) -- also doubles as a function to refresh all 
     end
     for _, toggle in pairs({"autodig", "autosprinkler", "farmbubbles", "farmflame", "farmcoco", "collectcrosshairs", "farmfuzzy", "farmunderballoons", "farmclouds", "autodispense", "autoboosters", "clock",
         "collectgingerbreads", "autosamovar", "autosnowmachine", "autostockings", "autoplanters", "autocandles", "autosnowbear", "autofeast", "autoonettart", "freeantpass", "freerobopass", "farmsprouts", "farmpuffshrooms", "farmrares", "autoquest", "autodoquest", "automask", "honeystorm",
-            "killmondo", "touchmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit", "expsamescriptenv"}) do
+            "killmondo", "touchmondo", "killvicious", "killwindy", "autokillmobs", "avoidmobs", "autoant", "tptonpc", "convertballoons", "donotfarmtokens", "autofarm", "loopspeed", "loopjump", "legit", "expsamescriptenv", "spamglitter"}) do
             _buttons[toggle]:SetState(kocmoc.toggles[toggle])
     end
 
