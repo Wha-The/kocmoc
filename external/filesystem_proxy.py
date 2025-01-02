@@ -50,18 +50,19 @@ class WriteHandler(BaseHandler):
     def get(self):
         try:
             fname = self.get_argument("file")
+            print(fname)
             file_path = self.validate_filename(fname)
             data = self.get_argument("data")
-            
             # Limit file size
             if len(data) > 10 * 1024 * 1024:  # 10MB limit
                 raise tornado.web.HTTPError(413, "File too large")
                 
-            with open(file_path, "wb") as f:
+            with open(file_path, "w") as f:
                 f.write(data)
         except tornado.web.HTTPError:
             raise
         except Exception as e:
+            print(e)
             raise tornado.web.HTTPError(500, "Internal server error")
 
 class AppendHandler(BaseHandler):
@@ -76,7 +77,7 @@ class AppendHandler(BaseHandler):
             if current_size + len(data) > 10 * 1024 * 1024:  # 10MB limit
                 raise tornado.web.HTTPError(413, "File too large")
                 
-            with open(file_path, "ab") as f:
+            with open(file_path, "a") as f:
                 f.write(data)
         except tornado.web.HTTPError:
             raise
