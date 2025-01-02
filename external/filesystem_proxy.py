@@ -11,14 +11,14 @@ class ReadHandler(tornado.web.RequestHandler):
 		with open(os.path.join("./workspace", fname), "r") as f:
 			self.write(f.read())
 class WriteHandler(tornado.web.RequestHandler):
-	def post(self):
+	def get(self):
 		fname = self.get_argument("file")
 		data = self.request.body
 		if ".." in fname: return
 		with open(os.path.join("./workspace", fname), "wb") as f:
 			f.write(data)
 class AppendHandler(tornado.web.RequestHandler):
-	def post(self):
+	def get(self):
 		fname = self.get_argument("file")
 		data = self.request.body
 		if ".." in fname: return
@@ -27,6 +27,7 @@ class AppendHandler(tornado.web.RequestHandler):
 class ExistsHandler(tornado.web.RequestHandler):
 	def get(self):
 		fname = self.get_argument("file")
+		if ".." in fname: return
 		self.write(os.path.exists(os.path.join("./workspace", fname)) and "1" or "0")
 def make_app():
 	return tornado.web.Application([
